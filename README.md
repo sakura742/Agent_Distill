@@ -40,17 +40,22 @@ Agent_Distill/
 │   └── index.html                 # 前端：双列对比 + 多轮对话 + 推理过程展示
 │
 ├── untils/
-│   └── compress.py                # float32/uint8 向量压缩工具（探索性代码，未接入主流程）
+│   └── compress.py                # float32/uint8 向量压缩与解压工具（探索性代码，未接入主流程）
 │
 ├── version/                       # 历史文档归档
-│   ├── Agent_Distill_ProjectDoc.md
-│   ├── improvement_plan.md
-│   └── improvement_plan_v2.md
+│   ├── Agent_Distill_ProjectDoc.md # 初始项目设计文档：模块划分、依赖关系、运行方式
+│   ├── improvement_plan.md         # 改进计划 v1：分析端到端链路断裂问题，规划 Web 评估平台
+│   └── improvement_plan_v2.md      # 改进计划 v2：拆分为三个目标，细化实施步骤与注意事项
 │
-├── merge_model.py                 # 一次性工具：将 LoRA 权重合并进基座，导出完整模型
+├── tree.py                        # 辅助工具：递归打印项目目录树结构，自动排除模型/虚拟环境目录
+├── merge_model.py                 # 一次性工具：在 CPU 上将 LoRA 权重合并进基座，导出完整模型到 qwen_merged/
 ├── agent_distill_train.jsonl      # 生成的训练数据（gen_data.py 自动生成，200 条）
 ├── qwen_mcp_lora_output/          # LoRA 权重输出目录（train.py 自动生成）
 ├── qwen_merged/                   # 合并后的完整模型（merge_model.py 自动生成）
+├── .gitignore                     # Git 忽略规则：排除模型文件、向量库、虚拟环境
+├── .python-version                # uv 管理的 Python 版本声明
+├── pyproject.toml                 # 项目元数据与依赖声明（uv 包管理器）
+├── uv.lock                        # uv 依赖锁定文件
 └── README.md
 ```
 
@@ -107,7 +112,23 @@ uvicorn web.app:app --host 0.0.0.0 --port 8000
 
 ---
 
-## 运行顺序（首次完整部署）
+### 其他工具文件
+
+| 文件 | 作用 |
+|---|---|
+| `merge_model.py` | 一次性工具。在 CPU 上加载基座模型 + LoRA 权重（PeftModel），调用 `merge_and_unload()` 合并，保存到 `qwen_merged/`。合并后模型可直接用于推理，无需再加载 LoRA 适配器。|
+| `tree.py` | 辅助工具。递归遍历项目目录，用 `├──`/`└──` 绘制 ASCII 树形图，自动排除 `.venv`、`qwen_mcp_lora_output/`、`qwen_merged/` 等大目录。运行 `python tree.py` 即可打印当前目录结构。|
+| `untils/compress.py` | 探索性代码。实现 float32 向量 → uint8 的无损压缩与还原：保留最大值索引 + 将剩余值线性映射到 [0,254]。设计目的是压缩 Chroma 向量存储空间，但未接入主流程。|
+
+### version/（历史文档归档）
+
+| 文件 | 作用 |
+|---|---|
+| `Agent_Distill_ProjectDoc.md` | 初始项目设计文档。定义两大模块（legal_rag / distill）的依赖关系、技术选型理由、完整运行流程，是项目最早期的规划蓝图。|
+| `improvement_plan.md` | 改进计划 v1。诊断端到端链路断裂（MCP 进程管理问题），提出用 `inference_core.py` 替代 MCP 方案，并规划 Web 评估平台。|
+| `improvement_plan_v2.md` | 改进计划 v2（当前版本）。将工作拆分为三个递进目标：推理层重构 → Web 评估平台 → 多轮对话测试脚本，细化每个目标的输入输出和注意事项。|
+
+---
 
 ```bash
 # 1. 建立向量库（一次性）
