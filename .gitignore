@@ -1,0 +1,29 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+*.egg
+
+# 虚拟环境
+.venv/
+venv/
+
+# 模型文件（太大，不上传 Git）
+qwen_mcp_lora_output/
+qwen_merged/
+*.safetensors
+*.bin
+*.pt
+
+# 向量库
+*.sqlite3
+*.index
+
+# IDE
+.vscode/
+.idea/
+
+# 系统
+.DS_Store
+Thumbs.db

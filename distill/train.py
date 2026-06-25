@@ -1,0 +1,122 @@
+# -*- coding: utf-8 -*-
+import sys
+import io
+import os
+
+sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
+os.environ["PYTHONIOENCODING"] = "utf-8"
+os.environ["HF_HUB_OFFLINE"] = "1"
+
+import torch
+from datasets import load_dataset
+from transformers import (
+    AutoModelForCausalLM,
+    AutoTokenizer,
+    BitsAndBytesConfig,
+)
+from peft import LoraConfig, get_peft_model, TaskType
+from trl import SFTTrainer, SFTConfig
+
+
+def train():
+
+    model_path = r"D:\py\Qwen2.5-1.5B"
+    data_path = r"D:\py\Agent_Distill\agent_distill_train.jsonl"
+    output_dir = r"D:\py\Agent_Distill\qwen_mcp_lora_output"
+
+    print("【1】加载 Tokenizer...")
+    tokenizer = AutoTokenizer.from_pretrained(
+        model_path,
+        trust_remote_code=True
+    )
+    tokenizer.pad_token = tokenizer.eos_token
+
+    quantization_config = BitsAndBytesConfig(
+        load_in_8bit=True,
+        llm_int8_threshold=6.0
+    )
+
+    print("【2】加载 Qwen 基座模型...")
+    model = AutoModelForCausalLM.from_pretrained(
+        model_path,
+        quantization_config=quantization_config,
+        device_map="auto",
+        trust_remote_code=True
+    )
+
+    model.gradient_checkpointing_enable()
+    model.enable_input_require_grads()
+
+    print("【3】注入 LoRA Adapter...")
+    peft_config = LoraConfig(
+        task_type=TaskType.CAUSAL_LM,
+        r=8,
+        lora_alpha=16,
+        lora_dropout=0.1,
+        target_modules=[
+            "q_proj", "v_proj", "k_proj", "o_proj",
+            "gate_proj", "up_proj", "down_proj"
+        ]
+    )
+
+    print("【4】加载训练数据集...")
+    dataset = load_dataset(
+        "json",
+        data_files=data_path,
+        split="train"
+    )
+
+    def formatting_prompts_func(example):
+        text = (
+            f"<|im_start|>system\n"
+            f"{example['instruction']}"
+            f"<|im_end|>\n"
+            f"<|im_start|>user\n"
+            f"{example['input']}"
+            f"<|im_end|>\n"
+            f"<|im_start|>assistant\n"
+            f"{example['output']}"
+            f"<|im_end|>"
+        )
+        return text
+
+    print("【5】配置 SFTConfig...")
+    training_args = SFTConfig(
+    output_dir=output_dir,
+    per_device_train_batch_size=1,
+    gradient_accumulation_steps=4,
+    learning_rate=2e-4,
+    num_train_epochs=3,
+    logging_steps=5,
+    save_strategy="epoch",
+    bf16=True,             # 把 fp16=True 改成 bf16=True
+    report_to="none",
+    optim="paged_adamw_8bit",
+    remove_unused_columns=False,
+    max_length=1024,
+    dataset_num_proc=1,
+    packing=False,
+)
+    print("【6】构建 SFTTrainer...")
+    trainer = SFTTrainer(
+    model=model,               # 传原始模型，不要先 get_peft_model
+    train_dataset=dataset,
+    peft_config=peft_config,   # SFTTrainer 自己注入 LoRA
+    formatting_func=formatting_prompts_func,
+    processing_class=tokenizer,
+    args=training_args,
+)
+
+    print("【7】开始 LoRA 微调训练...")
+    trainer.train()
+
+    print("【8】保存 LoRA 权重...")
+    trainer.model.save_pretrained(output_dir)
+    tokenizer.save_pretrained(output_dir)
+
+    print("训练完成！")
+    print(f"LoRA 已保存至: {output_dir}")
+
+
+if __name__ == "__main__":
+    train()
