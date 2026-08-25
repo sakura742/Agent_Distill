@@ -5,12 +5,21 @@
 # 唯一改动：
 #   1. 三行硬编码的 Windows 绝对路径改为从 configs.settings 读取（不设置任何
 #      环境变量时，取值与重构前的硬编码值完全相同，行为不变）；
-#   2. 【健壮性修复，非逻辑改动】原来无条件执行
-#      `sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')`，
-#      只要 sys.stdout 没有 `.buffer` 属性（例如被 pytest capture、某些管道
-#      重定向）就会直接 AttributeError；真实终端/Windows 控制台下 sys.stdout
-#      永远有 `.buffer`，所以加一层 hasattr 判断后，在原来能跑的场景下行为
-#      完全不变，只是让它在测试/CI 环境下也不再崩溃。
+#   2. 【健壮性修复，非逻辑改动，2026-08-25 二次修正】stdout 重新包装为 UTF-8
+#      这件事，从"模块顶层、import 时无条件执行"改为"只在 `python train.py`
+#      作为脚本直接运行时（`__name__ == '__main__'`）才执行"。
+#      原因：hasattr(sys.stdout, "buffer") 判断本身没错，但 pytest 的 capture
+#      对象*恰好也*带有 `.buffer` 属性——当本文件被其他代码 import（例如
+#      tests/ 里"能不能被正常 import"的结构性测试）时，旧写法会在 import
+#      阶段就把全局 sys.stdout 换成一个包住 pytest 内部 capture buffer 的新
+#      TextIOWrapper；等 pytest 会话结束去回收自己的 capture buffer 时，会
+#      因为这个 buffer 已经被外部代码"偷梁换柱"过而抛出
+#      `ValueError: I/O operation on closed file`，并连带把同一进程里其他
+#      测试也弄挂。实测复现：仅仅 `import distill.train` 一次即可让整个
+#      pytest 会话在收尾阶段崩溃（1 failed + 4 个无关测试被连带 ERROR）。
+#      挪到 `if __name__ == "__main__":` 内部后，import 该模块不再有任何
+#      副作用；真正把它当脚本跑（`python distill/train.py`）时行为和以前
+#      完全一样，仍然会在真实终端/Windows 控制台下把 stdout 包成 UTF-8。
 import sys
 import io
 import os
@@ -18,8 +27,6 @@ import os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from configs.settings import settings
 
-if hasattr(sys.stdout, "buffer"):
-    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
 os.environ["PYTHONIOENCODING"] = "utf-8"
 os.environ["HF_HUB_OFFLINE"] = "1"
 
@@ -135,4 +142,8 @@ def train():
 
 
 if __name__ == "__main__":
+    # 仅在作为脚本直接运行时才重新包装 stdout 为 UTF-8（原因见文件顶部说明），
+    # 避免 import 该模块产生副作用。
+    if hasattr(sys.stdout, "buffer"):
+        sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
     train()
