@@ -1,8 +1,21 @@
+"""主推理入口（原 inference/inference_core.py，Phase 1 迁移至 agent/）。
+
+三阶段推理流程（工具决策 -> 检索 -> RAG 生成）、串行加载/卸载双模型的策略、
+多轮历史拼接逻辑 —— 全部与重构前完全一致，Phase 1 不改变任何推理算法。
+改动仅限于：
+  1. 路径/常量（BASE_MODEL_PATH、LORA_PATH、chroma_db 路径、
+     MAX_HISTORY_TURNS、LAW_SNIPPET_LIMIT）从硬编码改为读取 configs.settings；
+  2. print(..., flush=True) 改为 logger；
+  3. 裸 FileNotFoundError 改为统一异常 KnowledgeBaseError。
+"""
+
 import os
 import sys
 import json
 import re
 import warnings
+
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import torch
 from transformers import AutoModelForCausalLM, AutoTokenizer
@@ -10,19 +23,24 @@ from peft import PeftModel
 from langchain_community.vectorstores import Chroma
 from langchain_huggingface import HuggingFaceEmbeddings
 
+from configs.settings import settings
+from app.exceptions import KnowledgeBaseError
+from app.logging_config import get_logger
+
 warnings.filterwarnings("ignore")
 os.environ["HF_HUB_OFFLINE"] = "1"
 
-# ── 路径配置 ────────────────────────────────────────────────
-_THIS_DIR = os.path.dirname(os.path.abspath(__file__))
-_DB_DIR   = os.path.abspath(os.path.join(_THIS_DIR, "..", "legal_rag", "chroma_db"))
+logger = get_logger(__name__)
 
-BASE_MODEL_PATH = r"D:\py\Qwen2.5-1.5B"
-LORA_PATH       = r"D:\py\Agent_Distill\qwen_mcp_lora_output"
-RAW_MODEL_PATH  = r"D:\py\Qwen2.5-1.5B"
+# ── 路径配置（来自 configs.settings，默认值与重构前硬编码值一致）─────
+_DB_DIR = settings.chroma_db_dir
 
-MAX_HISTORY_TURNS = 3
-LAW_SNIPPET_LIMIT = 600
+BASE_MODEL_PATH = settings.base_model_path
+LORA_PATH       = str(settings.lora_output_dir)
+RAW_MODEL_PATH  = settings.base_model_path
+
+MAX_HISTORY_TURNS = settings.max_history_turns
+LAW_SNIPPET_LIMIT = settings.law_snippet_limit
 
 _LABOR_KEYWORDS = {"工资", "老板", "裁员", "加班", "劳动", "辞退", "社保", "合同", "解雇"}
 
@@ -36,21 +54,21 @@ def load_models() -> dict:
     启动时调用一次。只加载 tokenizer 和 Chroma retriever，不加载 LLM。
     LLM 在每次推理时按需加载、用完立即释放（8G 单卡方案）。
     """
-    print("【inference_core】加载 Tokenizer...", flush=True)
+    logger.info("加载 Tokenizer...")
     tokenizer = AutoTokenizer.from_pretrained(BASE_MODEL_PATH, trust_remote_code=True)
 
-    print("【inference_core】加载 Chroma 向量库（CPU）...", flush=True)
+    logger.info("加载 Chroma 向量库（CPU）...")
     if not (os.path.exists(_DB_DIR) and len(os.listdir(_DB_DIR)) > 0):
-        raise FileNotFoundError(f"向量库不存在：{_DB_DIR}，请先运行 legal_rag/ingest.py")
+        raise KnowledgeBaseError(f"向量库不存在：{_DB_DIR}，请先运行 knowledge/ingest.py")
 
     embeddings = HuggingFaceEmbeddings(
-        model_name="shibing624/text2vec-base-chinese",
+        model_name=settings.embedding_model_name,
         model_kwargs={"device": "cpu"},
     )
-    vectorstore = Chroma(persist_directory=_DB_DIR, embedding_function=embeddings)
-    retriever   = vectorstore.as_retriever(search_kwargs={"k": 3})
+    vectorstore = Chroma(persist_directory=str(_DB_DIR), embedding_function=embeddings)
+    retriever   = vectorstore.as_retriever(search_kwargs={"k": settings.retrieval_top_k})
 
-    print("【inference_core】Tokenizer + 向量库就绪 ✅", flush=True)
+    logger.info("Tokenizer + 向量库就绪")
     return {
         "tokenizer": tokenizer,
         "retriever": retriever,
@@ -62,7 +80,7 @@ def load_models() -> dict:
 # ══════════════════════════════════════════════════════════════
 
 def _load_tuned_model():
-    print("【inference_core】加载微调模型...", flush=True)
+    logger.info("加载微调模型...")
     base = AutoModelForCausalLM.from_pretrained(
         BASE_MODEL_PATH,
         dtype=torch.float16,
@@ -76,7 +94,7 @@ def _load_tuned_model():
 
 
 def _load_raw_model():
-    print("【inference_core】加载原始模型...", flush=True)
+    logger.info("加载原始模型...")
     model = AutoModelForCausalLM.from_pretrained(
         RAW_MODEL_PATH,
         dtype=torch.float16,
@@ -319,12 +337,9 @@ if __name__ == "__main__":
         resources,
         user_query="老板突然把我踢出工作群，还扣了我半个月工资，我该怎么维权？",
     )
-    print("\n=== 原始模型 ===")
-    print(result["raw_answer"])
-    print("\n=== 微调模型 ===")
-    print(result["tuned_answer"])
-    print("\n=== 推理过程 ===")
-    print(json.dumps(result["reasoning"], ensure_ascii=False, indent=2))
+    logger.info("=== 原始模型 ===\n%s", result["raw_answer"])
+    logger.info("=== 微调模型 ===\n%s", result["tuned_answer"])
+    logger.info("=== 推理过程 ===\n%s", json.dumps(result["reasoning"], ensure_ascii=False, indent=2))
 
     # 多轮追问
     history = [
@@ -332,5 +347,4 @@ if __name__ == "__main__":
         {"role": "assistant", "content": result["tuned_answer"]},
     ]
     result2 = run_inference(resources, user_query="赔偿金具体怎么计算？", history=history)
-    print("\n=== 多轮追问：微调模型 ===")
-    print(result2["tuned_answer"])
+    logger.info("=== 多轮追问：微调模型 ===\n%s", result2["tuned_answer"])

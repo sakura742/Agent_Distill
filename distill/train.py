@@ -1,9 +1,25 @@
 # -*- coding: utf-8 -*-
+#
+# Phase 1 重构说明：本文件的训练核心逻辑（量化配置、LoRA 超参、
+# formatting_prompts_func 模板、SFTConfig/SFTTrainer 参数）按要求【完全未修改】。
+# 唯一改动：
+#   1. 三行硬编码的 Windows 绝对路径改为从 configs.settings 读取（不设置任何
+#      环境变量时，取值与重构前的硬编码值完全相同，行为不变）；
+#   2. 【健壮性修复，非逻辑改动】原来无条件执行
+#      `sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')`，
+#      只要 sys.stdout 没有 `.buffer` 属性（例如被 pytest capture、某些管道
+#      重定向）就会直接 AttributeError；真实终端/Windows 控制台下 sys.stdout
+#      永远有 `.buffer`，所以加一层 hasattr 判断后，在原来能跑的场景下行为
+#      完全不变，只是让它在测试/CI 环境下也不再崩溃。
 import sys
 import io
 import os
 
-sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from configs.settings import settings
+
+if hasattr(sys.stdout, "buffer"):
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
 os.environ["PYTHONIOENCODING"] = "utf-8"
 os.environ["HF_HUB_OFFLINE"] = "1"
 
@@ -20,9 +36,9 @@ from trl import SFTTrainer, SFTConfig
 
 def train():
 
-    model_path = r"D:\py\Qwen2.5-1.5B"
-    data_path = r"D:\py\Agent_Distill\agent_distill_train.jsonl"
-    output_dir = r"D:\py\Agent_Distill\qwen_mcp_lora_output"
+    model_path = settings.base_model_path
+    data_path = str(settings.train_data_path)
+    output_dir = str(settings.lora_output_dir)
 
     print("【1】加载 Tokenizer...")
     tokenizer = AutoTokenizer.from_pretrained(

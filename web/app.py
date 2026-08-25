@@ -1,30 +1,42 @@
 """
 法律咨询评估平台 — FastAPI 后端
-调用 inference_core.py 的两个模型，提供双列对比 + 多轮对话。
+调用 agent/inference_core.py 的两个模型，提供双列对比 + 多轮对话。
+
+Phase 1 改动：
+  1. import 路径从 `inference.inference_core` 改为 `agent.inference_core`
+     （inference/ 目录已迁移为 agent/）。
+  2. print 换成 logger。
+  3. MAX_HISTORY_TURNS 从 configs.settings 读取（与 agent/inference_core.py
+     共享同一个配置项，避免两处硬编码的轮数不同步）。
+路由、会话管理（内存字典）、请求/响应模型均未改变。
 """
 
 import uuid
 from fastapi import FastAPI, HTTPException
-from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
 
 import sys, os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from inference.inference_core import load_models, run_inference
+
+from agent.inference_core import load_models, run_inference
+from configs.settings import settings
+from app.logging_config import get_logger
+
+logger = get_logger(__name__)
 
 # ── FastAPI 应用 ──────────────────────────────────────────────
 app = FastAPI(title="法律咨询评估平台")
 
 # ── 启动时加载一次 ────────────────────────────────────────────
-print("【web/app】加载模型和向量库...", flush=True)
+logger.info("加载模型和向量库...")
 resources = load_models()
-print("【web/app】就绪 ✅", flush=True)
+logger.info("就绪")
 
 # ── 会话管理（内存） ──────────────────────────────────────────
 sessions: dict[str, list] = {}  # session_id -> history list
 
-MAX_HISTORY_TURNS = 3  # 保留最近 3 轮对话
+MAX_HISTORY_TURNS = settings.max_history_turns  # 保留最近 N 轮对话
 
 
 def _trim_history(history: list) -> list:

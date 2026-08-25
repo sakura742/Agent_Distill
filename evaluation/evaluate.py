@@ -1,20 +1,36 @@
 # -*- coding: utf-8 -*-
 """
-evaluate.py
+evaluation/evaluate.py
 
 对比原始 Qwen2.5-1.5B 与微调后模型在法律 Agent 工具调用上的准确率。
+（原 distill/evaluate.py，Phase 1 迁移至 evaluation/ —— 它属于"评估"职能，
+和 distill/ 里负责"生成数据 + 训练"的脚本分开存放，二者通过 configs.settings
+共享路径配置，不再各自硬编码。）
 
-评估方式（双层）：
+评估方式（双层，未改变）：
   主评估：JSON 解析后对 tool.name 字段做精确匹配
   降级评估：若模型输出无法解析为 JSON，退回字符串包含匹配
 每题记录命中方式，最终分别统计两种命中数，便于判断模型输出规范程度。
+
+测试集内容、判定逻辑与重构前完全一致（Phase 1 不扩展评估维度/规模，
+那是后续 Benchmark 体系化阶段的工作）。
 """
 
+import os
+import sys
 import re
 import json
+
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 import torch
 from transformers import AutoModelForCausalLM, AutoTokenizer
 from peft import PeftModel
+
+from configs.settings import settings
+from app.logging_config import get_logger
+
+logger = get_logger(__name__)
 
 # ── 工具描述（与 agent_pipeline 保持一致，只包含已实现的工具）──────────
 TOOLS_DESC = (
@@ -78,7 +94,7 @@ test_set = [
 
 
 # ── 解析工具调用输出 ──────────────────────────────────────────────────
-def parse_output(raw: str) -> tuple[str | None, str]:
+def parse_output(raw: str):
     """
     解析模型输出，返回 (tool_name, parse_method)。
     tool_name: 解析到的工具名，无需调用工具时为 None，解析完全失败为 "__parse_failed__"
@@ -116,9 +132,9 @@ def parse_output(raw: str) -> tuple[str | None, str]:
 
 # ── 单模型测试 ─────────────────────────────────────────────────────────
 def test_model(model, tokenizer, model_name: str):
-    print(f"\n{'='*60}")
-    print(f"  测试模型：{model_name}")
-    print('='*60)
+    logger.info("%s", "=" * 60)
+    logger.info("  测试模型：%s", model_name)
+    logger.info("%s", "=" * 60)
 
     correct_json   = 0  # JSON 精确匹配命中
     correct_regex  = 0  # 降级正则命中
@@ -161,31 +177,29 @@ def test_model(model, tokenizer, model_name: str):
         elif hit and method == "regex_fallback":
             correct_regex += 1
 
-        # 逐题打印
+        # 逐题记录
         hit_label = "✓" if hit else "✗"
         method_label = {"json_exact": "[JSON]", "regex_fallback": "[正则]", "failed": "[失败]"}[method]
-        print(f"\n  【题{item['id']}】{item['tag']}")
-        print(f"  问题：{item['question']}")
-        print(f"  期望工具：{expected}")
-        print(f"  解析工具：{parsed_tool}  {method_label}")
-        print(f"  模型原始输出：{result[:120]}")
-        print(f"  结果：{hit_label} {'正确' if hit else '错误'}")
+        logger.info(
+            "【题%s】%s | 期望工具：%s | 解析工具：%s %s | 结果：%s %s | 输出：%s",
+            item["id"], item["tag"], expected, parsed_tool, method_label,
+            hit_label, "正确" if hit else "错误", result[:120],
+        )
 
     total_hit = correct_json + correct_regex
-    print(f"\n  总准确率：  {total_hit}/{total} = {total_hit/total*100:.1f}%")
-    print(f"  JSON精确：  {correct_json}/{total}  （输出格式完全规范）")
-    print(f"  正则降级：  {correct_regex}/{total}  （工具名正确但格式不规范）")
-    print('='*60)
+    logger.info("总准确率：  %d/%d = %.1f%%", total_hit, total, total_hit / total * 100)
+    logger.info("JSON精确：  %d/%d  （输出格式完全规范）", correct_json, total)
+    logger.info("正则降级：  %d/%d  （工具名正确但格式不规范）", correct_regex, total)
 
 
 # ── 入口 ───────────────────────────────────────────────────────────────
 def main():
-    base_model_path  = r"D:\py\Qwen2.5-1.5B"
-    lora_path        = r"D:\py\Agent_Distill\qwen_mcp_lora_output"
-    merged_path      = r"D:\py\Agent_Distill\qwen_merged"
+    base_model_path = settings.base_model_path
+    lora_path       = str(settings.lora_output_dir)
+    merged_path     = str(settings.merged_model_dir)
 
     # 测试原始模型
-    print("加载原始模型...")
+    logger.info("加载原始模型...")
     tokenizer = AutoTokenizer.from_pretrained(base_model_path, trust_remote_code=True)
     raw_model = AutoModelForCausalLM.from_pretrained(
         base_model_path,
@@ -199,8 +213,7 @@ def main():
     torch.cuda.empty_cache()
 
     # 测试微调后模型（优先用 merged，没有则加载 LoRA）
-    print("\n加载微调后模型...")
-    import os
+    logger.info("加载微调后模型...")
     if os.path.exists(merged_path) and len(os.listdir(merged_path)) > 0:
         tuned_model = AutoModelForCausalLM.from_pretrained(
             merged_path,
