@@ -14,6 +14,7 @@ from functools import lru_cache
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+import chromadb
 from mcp.server.fastmcp import FastMCP
 from langchain_community.embeddings import HuggingFaceEmbeddings
 from langchain_community.vectorstores import Chroma
@@ -26,23 +27,23 @@ from mcp_service.tool_registry import ToolRegistry
 logger = get_logger(__name__)
 mcp_server = FastMCP("legal-assistant")
 tool_registry = ToolRegistry(settings.tools_config_path)
-
 embeddings = HuggingFaceEmbeddings(model_name=settings.embedding_model_name)
 
 
 @lru_cache(maxsize=8)
 def _get_retriever(collection: str):
-    """按工具契约指定的 collection 创建并缓存 retriever。
-
-    不做隐式 collection 回退：法域错配在法律场景下属于高风险错误，应该尽早失败。
-    Phase 3 完成分域入库后，这里即可直接使用对应 collection。
-    """
+    """按工具契约指定的 collection 创建并缓存 retriever。"""
     db_dir = settings.chroma_db_dir
     if not db_dir.exists() or not any(db_dir.iterdir()):
         raise KnowledgeBaseError(
             f"向量库不存在: {db_dir}。请先运行知识库入库流程。"
         )
+
     try:
+        # 先显式检查 collection，避免 LangChain Chroma 在 collection 不存在时
+        # 静默创建空 collection，进而把法域错误伪装成“检索无结果”。
+        client = chromadb.PersistentClient(path=str(db_dir))
+        client.get_collection(collection)
         vectorstore = Chroma(
             collection_name=collection,
             persist_directory=str(db_dir),
@@ -51,7 +52,7 @@ def _get_retriever(collection: str):
         return vectorstore.as_retriever(search_kwargs={"k": settings.retrieval_top_k})
     except Exception as exc:
         raise KnowledgeBaseError(
-            f"无法加载法域 collection '{collection}'，请确认 Phase 3 已完成对应入库。"
+            f"无法加载法域 collection '{collection}'，请确认对应知识库已完成入库。"
         ) from exc
 
 
