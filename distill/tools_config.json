@@ -1,24 +1,28 @@
 [
   {
     "name": "search_civil_law",
-    "description": "调用法律 MCP 服务器，检索中国民法典（包含婚姻、财产、合同、侵权等）中相关的法律条款和案例。",
+    "description": "检索中国民法典相关法律条款。",
+    "domain": "civil",
+    "collection": "civil_law",
     "parameters": {
       "type": "object",
       "properties": {
-        "query": {"type": "string", "description": "用于法律检索的关键词或案情摘要，例如 '入室盗窃 赔偿'"},
-        "limit": {"type": "integer", "description": "返回的相关法条数量，默认3条"}
+        "query": {"type": "string", "description": "法律问题、关键词或案情摘要"},
+        "limit": {"type": "integer", "description": "返回结果数量", "default": 3, "minimum": 1, "maximum": 10}
       },
       "required": ["query"]
     }
   },
   {
     "name": "search_labor_law",
-    "description": "调用法律 MCP 服务器，检索中国劳动法及劳动合同法（包含加班费、非法裁员、N+1赔偿、社保等）相关条款。",
+    "description": "检索劳动法及劳动合同法相关法律条款。",
+    "domain": "labor",
+    "collection": "labor_law",
     "parameters": {
       "type": "object",
       "properties": {
-        "query": {"type": "string", "description": "用于劳动法检索的关键词或案情摘要，例如 '公司未提前30天通知裁员 赔偿'"},
-        "limit": {"type": "integer", "description": "返回的相关法条数量，默认3条"}
+        "query": {"type": "string", "description": "法律问题、关键词或案情摘要"},
+        "limit": {"type": "integer", "description": "返回结果数量", "default": 3, "minimum": 1, "maximum": 10}
       },
       "required": ["query"]
     }
