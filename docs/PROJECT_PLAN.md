@@ -12,7 +12,7 @@
 | 0 | 代码审计 | ✅ 完成 | 2026-08-25 | [`architecture/current_architecture.md`](architecture/current_architecture.md) |
 | 0.5 | 目标态规划 | ✅ 完成 | 2026-08-25 | [`architecture/refactor_plan.md`](architecture/refactor_plan.md) |
 | 1 | 模块化骨架 + 配置/日志/异常系统 | ✅ 完成 | 2026-08-25 | [`phase1_refactor_notes.md`](phase1_refactor_notes.md) |
-| 2 | MCP Tool Service 常驻化 + 工具契约统一 | 🔄 进行中 | — | 本分支施工中 |
+| 2 | MCP Tool Service 常驻化 + 工具契约统一 | ✅ 完成 | 2026-08-26 | [`phase2_mcp_notes.md`](phase2_mcp_notes.md) |
 | 3 | RAG 分域重构（Metadata / Rerank） | ⬜ 未开始 | — | — |
 | 4 | LangGraph Agent Runtime + Hybrid Router | ⬜ 未开始 | — | — |
 | 5 | 模型层升级（Qwen3.5-2B）+ Trajectory 蒸馏 | ⬜ 未开始 | — | — |
@@ -32,23 +32,20 @@
 **验收结果**：`pytest tests/` → `26 passed, 12 skipped`（skip 均为沙盒缺三方库，
 非路径错误），0 failed / 0 error。详见 phase1_refactor_notes.md §四。
 
-**遗留给后续阶段、本阶段明确不处理的问题**（原样保留，未修复）：
+**遗留给后续阶段、本阶段明确不处理的问题**（原样保留）：
 
-- `mcp_service/server.py` 里 `search_civil_law` / `search_labor_law` 两个工具函数体
-  仍然完全相同（共用同一 retriever，未做真正的法域路由）→ 阶段 2/3 处理。
+- RAG 仍为单 collection，法域隔离和真正的分域检索 → 阶段 3。
 - 训练数据 `output` 字段仍是自然语言拼接的伪 JSON，且约 1/6 样本存在 `keyword`/`query`
   参数名混用 → 阶段 5（Agent Trajectory 蒸馏）处理。
 - `evaluation/evaluate.py` 测试集仍是硬编码在代码里的 5 道题，只评估“工具选对没有”
   一个维度 → 阶段 6（Benchmark 体系化）处理。
 - `agent/inference_core.py` 每次请求串行加载/卸载两个模型、`web/app.py` 会话状态是
   进程内内存字典 → 阶段 4/7 处理。
-- `knowledge/direct_rag.py` 仍是未被调用的预留代码。`mcp_service/debug_rag.py` 与
-  `mcp_service/test_mcp_server.py` 原本功能重叠，Phase 2 已合并为保留 `debug_rag.py`
-  一个诊断入口。
+- `knowledge/direct_rag.py` 仍是未被调用的预留代码，后续视维护成本决定是否处理。
 
 ---
 
-## 阶段 2：MCP Tool Service（进行中）
+## 阶段 2：MCP Tool Service（已完成，2026-08-26）
 
 **目标**：把 MCP 从“脚本级工具”升级为稳定的工具服务基础设施，让上层 LangGraph
 只依赖统一 Tool Contract，而不直接依赖 Chroma 或具体法律知识库实现。
@@ -57,23 +54,28 @@
 
 - `distill/tools_config.json` 增加 `domain`、`collection` 字段，并统一参数 Schema。
 - 新增 `mcp_service/tool_registry.py`，负责加载、校验并提供只读 Tool Registry。
-- `mcp_service/server.py` 改为基于 Tool Registry 查找 collection，按工具法域获取并缓存
-  Retriever。
-- 禁止 collection 不存在时静默创建空 collection，避免法律法域错误被伪装成“无检索结果”。
-- 删除与 `debug_rag.py` 功能高度重叠的 `test_mcp_server.py`。
-- 新增 `tests/test_tool_registry.py`，覆盖正常加载、重复工具名和缺失配置等情况。
+- 新增 `mcp_service/retriever_service.py`，将 Chroma / Embedding / Retriever 实现从 MCP
+  transport 中抽离，并按 collection 做 LRU Cache。
+- `mcp_service/server.py` 保持为常驻 MCP transport，仅负责暴露工具并调用 Retriever Service。
+- collection 不存在时显式抛出知识库错误，禁止静默创建空 collection。
+- 删除重复的 `mcp_service/test_mcp_server.py` 和 `mcp_service/debug_rag.py`。
+- 新增 `tests/test_tool_registry.py`，覆盖 Tool Contract 加载和配置错误。
+- 新增 `tests/test_mcp_tool_service.py`，验证民法工具 → `civil_law`、劳动法工具 →
+  `labor_law` 的真实运行时路由，以及空 query 校验。
 
-### 当前边界
+### 验收边界
 
-Phase 2 只建立工具服务和 collection 路由契约；真正的 `civil_law` / `labor_law`
-collection 由 Phase 3 的 RAG 分域入库创建。这样可以避免在 RAG Metadata 尚未重构前，
-为了让 MCP“看起来能跑”而引入错误的法域回退。
+Phase 2 已完成“工具 → 法域 → collection”的服务层契约，但**没有伪造真实检索成功**：
+当前知识库仍是 Phase 1 的单 collection 数据，因此 `civil_law` / `labor_law` 两个真实
+collection 的创建、分域入库和端到端 MCP 检索属于 Phase 3。
 
-### 待验收
+代码级测试尚未在你的本地环境执行；合并前应运行：
 
-- 完成 Phase 3 分域 collection 后，运行 MCP 端到端检索验证。
-- 确认 stdio MCP Client → Server → Domain Retriever 全链路正常。
-- 确认工具 Schema 与后续 LangGraph Tool Calling 输入格式一致。
+```bash
+uv run pytest tests/
+```
+
+Phase 3 建立分域知识库后，再执行 MCP stdio Client → Server → Retriever 的真实端到端验证。
 
 ---
 
@@ -107,3 +109,4 @@ collection 由 Phase 3 的 RAG 分域入库创建。这样可以避免在 RAG Me
 | 2026-08-25 | 创建本文档；记录阶段 0 / 0.5 / 1 已完成 |
 | 2026-08-25 | 阶段 1 收尾修复：`distill/train.py` stdout 副作用 bug、根 README 路径更新、补齐 `docs/phase1_refactor_notes.md`、`pyproject.toml` 补 `pytest`/`python-dotenv` |
 | 2026-08-25 | 阶段 2 开工：统一 Tool Contract、增加 Tool Registry、MCP collection 路由基础设施、删除重复诊断脚本、增加 Registry 单元测试 |
+| 2026-08-26 | 阶段 2 完成：拆分 Retriever Service、补充法域路由测试、删除重复诊断脚本、完善阶段施工记录 |
