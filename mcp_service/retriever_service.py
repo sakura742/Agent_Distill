@@ -1,73 +1,48 @@
-"""Legal retrieval service used by MCP tools.
-
-This module keeps vector-store concerns out of the MCP transport layer. Tool
-names, domains and collection names come from ToolRegistry; the service only
-resolves the configured collection and executes retrieval.
-"""
+# -*- coding: utf-8 -*-
+"""MCP 与法律 RAG 之间的适配层。"""
 
 from __future__ import annotations
 
 from functools import lru_cache
-from pathlib import Path
-
-import chromadb
-from langchain_community.embeddings import HuggingFaceEmbeddings
-from langchain_community.vectorstores import Chroma
 
 from app.exceptions import KnowledgeBaseError
-from configs.settings import settings
-from mcp_service.tool_registry import ToolRegistry
+from knowledge.retriever import LegalRetriever
+from mcp_service.tool_registry import ToolDefinition, ToolRegistry
 
 
 class LegalRetrieverService:
-    """Long-lived retrieval service with per-collection retriever caching."""
-
-    def __init__(self, registry: ToolRegistry, db_dir: Path, embedding_model_name: str, top_k: int = 3) -> None:
+    def __init__(self, registry: ToolRegistry):
         self.registry = registry
-        self.db_dir = Path(db_dir)
-        self.top_k = top_k
-        self.embeddings = HuggingFaceEmbeddings(model_name=embedding_model_name)
 
     @lru_cache(maxsize=8)
-    def _get_retriever(self, collection: str):
-        """Resolve an existing Chroma collection and cache its retriever."""
-        if not self.db_dir.exists() or not any(self.db_dir.iterdir()):
-            raise KnowledgeBaseError(
-                f"向量库不存在: {self.db_dir}。请先运行知识库入库流程。"
-            )
-
-        try:
-            client = chromadb.PersistentClient(path=str(self.db_dir))
-            client.get_collection(collection)
-            vectorstore = Chroma(
-                collection_name=collection,
-                persist_directory=str(self.db_dir),
-                embedding_function=self.embeddings,
-            )
-            return vectorstore.as_retriever(search_kwargs={"k": self.top_k})
-        except Exception as exc:
-            raise KnowledgeBaseError(
-                f"无法加载法域 collection '{collection}'，请确认对应知识库已完成入库。"
-            ) from exc
+    def _get_retriever(self, collection: str) -> LegalRetriever:
+        for tool in self.registry.all():
+            if tool.collection == collection:
+                return LegalRetriever(tool.domain)
+        raise KnowledgeBaseError(f"没有找到 collection 对应的法律领域: {collection}")
 
     def search(self, tool_name: str, query: str, limit: int = 3) -> str:
-        if not isinstance(query, str) or not query.strip():
+        if not query or not query.strip():
             raise ValueError("query 不能为空")
-
-        definition = self.registry.get(tool_name)
-        safe_limit = max(1, min(int(limit), 10))
-        retriever = self._get_retriever(definition.collection)
-        docs = retriever.invoke(query)
-        return "\n\n".join(doc.page_content for doc in docs[:safe_limit])
-
-    def collection_for_tool(self, tool_name: str) -> str:
-        return self.registry.get(tool_name).collection
+        if limit < 1 or limit > 10:
+            raise ValueError("limit 必须在 1~10 之间")
+        tool: ToolDefinition = self.registry.get(tool_name)
+        if not tool.collection:
+            raise KnowledgeBaseError(f"工具 {tool_name} 未配置 collection")
+        retriever = self._get_retriever(tool.collection)
+        results = retriever.search(query, top_k=limit)
+        if not results:
+            return "未检索到相关法条。"
+        return "\n\n".join(
+            f"[{item.metadata.get('law_name', '未知法律')}"
+            f" {item.metadata.get('article', '')}"
+            f" | {item.metadata.get('source', '')}"
+            f" p.{item.metadata.get('page', '')}]\n{item.content}"
+            for item in results
+        )
 
 
 def build_default_service() -> LegalRetrieverService:
-    return LegalRetrieverService(
-        registry=ToolRegistry(settings.tools_config_path),
-        db_dir=settings.chroma_db_dir,
-        embedding_model_name=settings.embedding_model_name,
-        top_k=settings.retrieval_top_k,
-    )
+    from configs.settings import settings
+
+    return LegalRetrieverService(ToolRegistry(settings.tools_config_path))
