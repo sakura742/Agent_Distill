@@ -4,12 +4,9 @@ from __future__ import annotations
 
 from typing import Any, Callable
 
-from knowledge.retriever import LegalRetriever
-from mcp_service.tool_registry import ToolRegistry
-from mcp_service.retriever_service import build_default_service
-
 from .state import AgentState
 from ..router import HybridRouter
+from .tool_executor import DirectToolExecutor
 
 
 _ROUTER = HybridRouter()
@@ -52,12 +49,12 @@ def tool_decision(state: AgentState) -> AgentState:
     }
 
 
-def tool_execution(state: AgentState, service=None) -> AgentState:
-    service = service or build_default_service()
+def tool_execution(state: AgentState, executor=None) -> AgentState:
+    executor = executor or DirectToolExecutor()
     tool_name = state["tool_name"]
     arguments = state.get("tool_arguments", {})
     try:
-        result = service.search(tool_name, arguments["query"], int(arguments.get("limit", 5)))
+        result = executor.execute(tool_name, arguments)
         return {
             "tool_result": result,
             "error": None,
@@ -72,8 +69,6 @@ def tool_execution(state: AgentState, service=None) -> AgentState:
 
 
 def retrieval(state: AgentState) -> AgentState:
-    # The MCP/Retriever service currently returns a rendered result. Keep the
-    # raw result in state and expose a structured citation list for downstream nodes.
     text = state.get("tool_result", "")
     citations: list[dict[str, Any]] = []
     for block in text.split("\n\n"):
