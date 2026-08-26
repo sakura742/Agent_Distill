@@ -1,0 +1,61 @@
+"""Stateful LangGraph orchestration for legal consultation."""
+
+from __future__ import annotations
+
+from typing import Callable
+
+from langgraph.graph import END, START, StateGraph
+
+from .nodes import (
+    generation,
+    intent_analysis,
+    retrieval,
+    retry_plan,
+    route_after_tool,
+    route_after_verification,
+    task_planning,
+    tool_decision,
+    tool_execution,
+    verification,
+)
+from .state import AgentState
+
+
+def build_legal_agent_graph(*, tool_service=None, answer_generator: Callable | None = None):
+    """Build and compile the Phase 4 Legal Agent graph.
+
+    ``tool_service`` defaults to the Phase 2/3 LegalRetrieverService. A caller
+    can inject a mock service in tests without changing the graph itself.
+    ``answer_generator`` is intentionally injectable; Phase 5 will connect the
+    local Qwen serving layer here.
+    """
+    graph = StateGraph(AgentState)
+
+    graph.add_node("intent_analysis", intent_analysis)
+    graph.add_node("task_planning", task_planning)
+    graph.add_node("tool_decision", tool_decision)
+    graph.add_node("tool_execution", lambda state: tool_execution(state, tool_service))
+    graph.add_node("retrieval", retrieval)
+    graph.add_node("generation", lambda state: generation(state, answer_generator))
+    graph.add_node("verification", verification)
+    graph.add_node("retry_plan", retry_plan)
+
+    graph.add_edge(START, "intent_analysis")
+    graph.add_edge("intent_analysis", "task_planning")
+    graph.add_edge("task_planning", "tool_decision")
+    graph.add_edge("tool_decision", "tool_execution")
+    graph.add_conditional_edges(
+        "tool_execution",
+        route_after_tool,
+        {"retrieval": "retrieval", "retry_or_end": "retry_plan"},
+    )
+    graph.add_edge("retrieval", "generation")
+    graph.add_edge("generation", "verification")
+    graph.add_conditional_edges(
+        "verification",
+        route_after_verification,
+        {"end": END, "retry": "retry_plan"},
+    )
+    graph.add_edge("retry_plan", "tool_execution")
+
+    return graph.compile()
