@@ -22,17 +22,44 @@ import pytest
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 
-def test_settings_loads_with_defaults():
-    from configs.settings import settings
+# Settings 会在模块导入时加载 .env。默认值测试必须显式清除配置环境变量，
+# 否则开发机上的 .env / shell 环境会污染“默认值”测试。
+_SETTINGS_ENV_VARS = (
+    "AGENT_DISTILL_BASE_MODEL_PATH",
+    "AGENT_DISTILL_LORA_OUTPUT_DIR",
+    "AGENT_DISTILL_MERGED_MODEL_DIR",
+    "AGENT_DISTILL_DATA_DIR",
+    "AGENT_DISTILL_CHROMA_DB_DIR",
+    "AGENT_DISTILL_TRAIN_DATA_PATH",
+    "AGENT_DISTILL_TOOLS_CONFIG_PATH",
+    "AGENT_DISTILL_MCP_SERVER_PATH",
+    "AGENT_DISTILL_EMBEDDING_MODEL",
+    "AGENT_DISTILL_RERANKER_MODEL",
+    "DEEPSEEK_API_KEY",
+    "DEEPSEEK_BASE_URL",
+    "DEEPSEEK_MODEL",
+    "AGENT_DISTILL_MAX_HISTORY_TURNS",
+    "AGENT_DISTILL_LAW_SNIPPET_LIMIT",
+    "AGENT_DISTILL_RETRIEVAL_TOP_K",
+    "AGENT_DISTILL_LOG_LEVEL",
+)
+
+
+def test_settings_loads_with_defaults(monkeypatch):
+    for name in _SETTINGS_ENV_VARS:
+        monkeypatch.delenv(name, raising=False)
+
+    from configs.settings import Settings
 
     # 默认值应与重构前硬编码值完全一致（不设置任何环境变量的情况下）
-    assert settings.base_model_path == r"D:\py\Qwen2.5-1.5B"
-    assert str(settings.lora_output_dir) == r"D:\py\Agent_Distill\qwen_mcp_lora_output"
-    assert settings.embedding_model_name == "shibing624/text2vec-base-chinese"
-    assert settings.max_history_turns == 3
-    assert settings.law_snippet_limit == 600
-    assert settings.deepseek_base_url == "https://api.deepseek.com"
-    assert settings.deepseek_model == "deepseek-chat"
+    s = Settings()
+    assert s.base_model_path == r"D:\py\Qwen2.5-1.5B"
+    assert str(s.lora_output_dir) == r"D:\py\Agent_Distill\qwen_mcp_lora_output"
+    assert s.embedding_model_name == "shibing624/text2vec-base-chinese"
+    assert s.max_history_turns == 3
+    assert s.law_snippet_limit == 600
+    assert s.deepseek_base_url == "https://api.deepseek.com"
+    assert s.deepseek_model == "deepseek-chat"
 
 
 def test_settings_paths_are_path_objects():
@@ -54,7 +81,7 @@ def test_settings_paths_are_path_objects():
 def test_settings_env_override(monkeypatch):
     monkeypatch.setenv("AGENT_DISTILL_BASE_MODEL_PATH", "/tmp/fake-qwen")
     monkeypatch.setenv("AGENT_DISTILL_MAX_HISTORY_TURNS", "7")
-    # Settings 是 dataclass，每次 import 都会重新求值 default_factory，
+    # Settings 是 dataclass，每次实例化都会重新求值 default_factory，
     # 这里直接实例化一个新的 Settings 验证覆盖生效，而不用重新 import 单例。
     from configs.settings import Settings
 
