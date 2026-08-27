@@ -12,7 +12,7 @@ import os
 from pathlib import Path
 
 import torch
-from datasets import load_dataset
+from datasets import Dataset
 from peft import LoraConfig, TaskType
 from transformers import AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig
 from trl import SFTConfig, SFTTrainer
@@ -20,16 +20,13 @@ from trl import SFTConfig, SFTTrainer
 from configs.settings import settings
 
 
-def _trajectory_to_text(item: dict) -> str:
+def _trajectory_to_text(item: dict, tokenizer) -> str:
     tool = item.get("tool", {})
     target = {
         "domain": item.get("domain"),
         "intent": item.get("intent"),
         "plan": item.get("plan", []),
-        "tool": {
-            "name": tool.get("name"),
-            "arguments": tool.get("arguments", {}),
-        },
+        "tool": {"name": tool.get("name"), "arguments": tool.get("arguments", {})},
         "evidence": item.get("citations", []),
         "answer": item.get("answer", ""),
     }
@@ -64,20 +61,18 @@ def _load_data() -> list[dict]:
     return rows
 
 
-model_path = settings.qwen35_model_path
-tokenizer = AutoTokenizer.from_pretrained(
-    model_path,
-    trust_remote_code=True,
-    local_files_only=settings.hf_local_files_only,
-)
-if tokenizer.pad_token is None:
-    tokenizer.pad_token = tokenizer.eos_token
-
-
 def train() -> None:
+    model_path = settings.qwen35_model_path
+    tokenizer = AutoTokenizer.from_pretrained(
+        model_path,
+        trust_remote_code=True,
+        local_files_only=settings.hf_local_files_only,
+    )
+    if tokenizer.pad_token is None:
+        tokenizer.pad_token = tokenizer.eos_token
+
     rows = _load_data()
-    texts = [{"text": _trajectory_to_text(row)} for row in rows]
-    dataset = __import__("datasets").Dataset.from_list(texts)
+    dataset = Dataset.from_list([{"text": _trajectory_to_text(row, tokenizer)} for row in rows])
 
     quantization_config = BitsAndBytesConfig(
         load_in_4bit=True,
