@@ -1,0 +1,9 @@
+{
+  "comparison": ["Qwen3.5-4B Raw", "Qwen3.5-4B LoRA"],
+  "same_benchmark": true,
+  "same_runtime": true,
+  "same_retrieval_corpus": true,
+  "same_tool_contract": true,
+  "same_decoding": true,
+  "metrics": ["routing_accuracy", "retrieval_recall_at_5", "retrieval_mrr", "tool_selection_accuracy", "tool_argument_accuracy", "workflow_success_rate", "answer_token_overlap_f1", "citation_precision", "citation_recall", "multi_turn_success_rate"]
+}
