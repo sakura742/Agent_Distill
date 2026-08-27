@@ -11,43 +11,49 @@
 | 1 | 模块化骨架 + 配置/日志/异常系统 | ✅ 完成 | 2026-08-25 | phase1_refactor_notes.md |
 | 2 | MCP Tool Service 常驻化 + 工具契约统一 | ✅ 完成 | 2026-08-26 | phase2_mcp_notes.md |
 | 3 | RAG 分域重构（Metadata / Rerank） | ✅ 完成 | 2026-08-27 | phase3_rag_notes.md |
-| 4 | LangGraph Agent Runtime + Hybrid Router | 🔄 进行中 | 2026-08-27 | phase4_agent_runtime_notes.md |
-| 5 | 模型层升级（Qwen3.5-2B）+ Trajectory 蒸馏 | ⬜ 未开始 | — | — |
+| 4 | LangGraph Agent Runtime + Hybrid Router | ✅ 完成 | 2026-08-27 | phase4_agent_runtime_notes.md |
+| 5 | 模型层升级（Qwen3.5-2B）+ Trajectory 蒸馏 | ✅ 完成 | 2026-08-27 | phase5_distillation_notes.md |
 | 6 | Benchmark / Evaluation 体系化 | ⬜ 未开始 | — | — |
 | 7 | 多轮对话 + Web Dashboard + Docker 化 | ⬜ 未开始 | — | — |
 
-## 阶段 4：LangGraph Agent Runtime + Hybrid Router（进行中）
+## 阶段 4：LangGraph Agent Runtime + Hybrid Router
+
+Phase 4 已完成 Runtime 骨架：Intent Analysis、Task Planning、Tool Decision、Tool Execution、Retrieval、Generation、Verification、Re-plan，以及规则优先 + Embedding 的 Hybrid Router。Generation 保持 `answer_generator` 注入点，因此 Phase 5 可以独立接入本地模型。
+
+## 阶段 5：Qwen3.5-2B Serving + Agent Trajectory 蒸馏
 
 ### 目标
 
-把 Phase 2 的 Tool Service 和 Phase 3 的 Legal RAG 编排成状态化 Agent Runtime：
-
 ```text
-Intent Analysis → Task Planning → Tool Decision → Tool Execution
-→ Retrieval → Generation → Verification
-                              ↑                 │
-                              └──── Re-plan ───┘
+Teacher → Structured Trajectory → Hard Example Mining → Qwen3.5-2B LoRA
+                                                        ↓
+Phase 4 Runtime ← Qwen3.5 Local Serving ← LoRA Adapter
 ```
 
 ### 已实现
 
-- `agent/runtime/state.py`：统一 AgentState，保存问题、领域、意图、计划、工具调用、检索结果、引用、答案、验证状态、错误和执行 trace。
-- `agent/router.py`：Hybrid Router，当前采用规则优先、Embedding 相似度补充、fallback 兜底；支持 labor / civil 两个法域。
-- `agent/runtime/nodes.py`：实现 Intent Analysis、Task Planning、Tool Decision、Tool Execution、Retrieval、Generation、Verification 和 Re-plan 节点。
-- `agent/runtime/graph.py`：使用 LangGraph StateGraph 构建条件工作流；验证失败或工具异常时进入一次 Re-plan。
-- `tests/test_phase4_runtime.py`：通过 Fake Tool Service 验证路由、状态流转、引用生成和 trace。
-- Generation 使用可注入 `answer_generator`，暂不把模型加载逻辑耦合到 Graph；Phase 5 接入 Qwen3.5-2B Serving。
+- `configs/settings.py`：新增 Qwen3.5 模型、LoRA、trajectory、hard-example 路径及本地模型配置。
+- `model_service/qwen35.py`：Qwen3.5-2B 常驻模型服务，复用模型实例，不再每个请求重复加载。
+- `model_service/server.py`：FastAPI `/health` 和 `/v1/chat/completions`。
+- `agent/runtime/qwen35_generator.py`：把 Serving 适配到 Phase 4 Generation Node。
+- `distill/trajectory.py`：通过 Phase 4 Graph 生成结构化 Agent trajectory，并由教师模型生成最终答案。
+- `distill/hard_mining.py`：基于 verification、retry、route confidence、tool/citation 缺失筛选 hard examples。
+- `distill/train_phase5.py`：4-bit NF4 + LoRA + Gradient Checkpointing 的 Qwen3.5-2B SFT。
+- `tests/test_phase5_distillation.py`：覆盖配置隔离、困难样本规则和 trajectory 序列化。
+- `docs/phase5_distillation_notes.md`：完整记录 Phase 5 数据流、训练配置和运行方式。
+
+### 训练目标
+
+不直接训练隐藏 CoT，而是蒸馏可观测 Agent 行为：
+
+`domain → intent → plan → tool → evidence → answer`
 
 ### 当前边界
 
-Phase 4 已完成 Runtime 骨架和可测试的工作流编排，但尚未标记完成：真实 MCP Transport、真实本地模型 Generation、多轮 Checkpoint 和 Benchmark 属于后续集成范围。
+Phase 5 完成模型 Serving、轨迹蒸馏、Hard Example Mining 和 LoRA 训练基础设施。Benchmark 数值对比进入 Phase 6；Checkpoint、多轮会话和 Web/Docker 进入 Phase 7。
 
 ## 后续阶段概要
 
-- **阶段 5**：Qwen3.5-2B Serving + Agent Trajectory 蒸馏 + LoRA / Hard Example Mining。
-- **阶段 6**：Routing / Retrieval / Tool Calling / Workflow / Answer / Multi-turn 六类 Benchmark。
-- **阶段 7**：Checkpoint、多轮对话、Web Dashboard、Docker 化。
-- **阶段 5**：Qwen3.5-2B Serving + Agent Trajectory 蒸馏 + LoRA / Hard Example Mining。
 - **阶段 6**：Routing / Retrieval / Tool Calling / Workflow / Answer / Multi-turn 六类 Benchmark。
 - **阶段 7**：Checkpoint、多轮对话、Web Dashboard、Docker 化。
 
@@ -57,8 +63,6 @@ Phase 4 已完成 Runtime 骨架和可测试的工作流编排，但尚未标记
 |---|---|
 | 2026-08-25 | Phase 0 / 0.5 / 1 完成 |
 | 2026-08-26 | Phase 2 MCP Tool Service 完成 |
-| 2026-08-25 | Phase 0 / 0.5 / 1 完成 |
-| 2026-08-26 | Phase 2 MCP Tool Service 完成 |
-| 2026-08-26 | Phase 3 开工：领域语料配置、条款感知 Chunk、分 collection 入库、Metadata Filter、可选 Rerank、Recall@K / MRR |
-| 2026-08-27 | Phase 3 RAG 分域、条款感知 Chunk、Metadata Filter、Rerank 与检索指标完成并经本地验证 |
-| 2026-08-27 | Phase 4 开工：LangGraph Runtime、Hybrid Router、状态管理、条件工作流和 Re-plan |
+| 2026-08-27 | Phase 3 RAG 分域、条款感知 Chunk、Metadata Filter、Rerank 与检索指标完成 |
+| 2026-08-27 | Phase 4 LangGraph Runtime、Hybrid Router、状态管理、条件工作流和 Re-plan 完成 |
+| 2026-08-27 | Phase 5 Qwen3.5 Serving、Structured Trajectory、Hard Example Mining、4-bit LoRA SFT 完成 |

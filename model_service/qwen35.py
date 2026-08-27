@@ -1,0 +1,103 @@
+"""Qwen3.5-2B local serving adapter.
+
+The adapter keeps model lifecycle out of LangGraph. A single model instance is
+loaded by the serving process and reused for requests, which is substantially
+cheaper than loading/unloading the model for every graph node on an 8 GB GPU.
+"""
+
+from __future__ import annotations
+
+import threading
+from dataclasses import dataclass
+from typing import Any
+
+import torch
+from transformers import AutoModelForCausalLM, AutoTokenizer
+
+from configs.settings import settings
+
+
+@dataclass(frozen=True)
+class GenerationConfig:
+    max_new_tokens: int = 512
+    temperature: float = 0.2
+    top_p: float = 0.9
+    do_sample: bool = False
+
+
+class Qwen35Service:
+    """Thread-safe local Qwen3.5-2B text generation service."""
+
+    def __init__(self, model_path: str | None = None) -> None:
+        self.model_path = model_path or settings.qwen35_model_path
+        self._tokenizer = None
+        self._model = None
+        self._lock = threading.Lock()
+
+    @property
+    def loaded(self) -> bool:
+        return self._model is not None
+
+    def load(self) -> None:
+        if self._model is not None:
+            return
+        self._tokenizer = AutoTokenizer.from_pretrained(
+            self.model_path,
+            trust_remote_code=True,
+            local_files_only=settings.hf_local_files_only,
+        )
+        kwargs: dict[str, Any] = {
+            "device_map": "auto",
+            "low_cpu_mem_usage": True,
+            "trust_remote_code": True,
+            "local_files_only": settings.hf_local_files_only,
+        }
+        if torch.cuda.is_available():
+            kwargs["dtype"] = torch.bfloat16
+        else:
+            kwargs["dtype"] = torch.float32
+        self._model = AutoModelForCausalLM.from_pretrained(self.model_path, **kwargs)
+        self._model.eval()
+
+    def unload(self) -> None:
+        self._model = None
+        self._tokenizer = None
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+
+    def generate(
+        self,
+        messages: list[dict[str, str]],
+        config: GenerationConfig | None = None,
+    ) -> str:
+        config = config or GenerationConfig()
+        with self._lock:
+            self.load()
+            assert self._tokenizer is not None and self._model is not None
+            prompt = self._tokenizer.apply_chat_template(
+                messages,
+                tokenize=False,
+                add_generation_prompt=True,
+            )
+            encoded = self._tokenizer(prompt, return_tensors="pt")
+            device = next(self._model.parameters()).device
+            encoded = {k: v.to(device) for k, v in encoded.items()}
+            with torch.inference_mode():
+                output = self._model.generate(
+                    **encoded,
+                    max_new_tokens=config.max_new_tokens,
+                    temperature=config.temperature,
+                    top_p=config.top_p,
+                    do_sample=config.do_sample,
+                    pad_token_id=self._tokenizer.pad_token_id or self._tokenizer.eos_token_id,
+                    eos_token_id=self._tokenizer.eos_token_id,
+                )
+            generated = output[0][encoded["input_ids"].shape[1]:]
+            return self._tokenizer.decode(generated, skip_special_tokens=True).strip()
+
+    def health(self) -> dict[str, Any]:
+        return {
+            "model": self.model_path,
+            "loaded": self.loaded,
+            "device": str(next(self._model.parameters()).device) if self._model else None,
+        }

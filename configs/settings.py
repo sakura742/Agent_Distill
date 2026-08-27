@@ -37,10 +37,14 @@ class Settings:
     data_dir: Path = field(default_factory=lambda: _env_path("AGENT_DISTILL_DATA_DIR", PROJECT_ROOT / "data"))
     chroma_db_dir: Path = field(default_factory=lambda: _env_path("AGENT_DISTILL_CHROMA_DB_DIR", PROJECT_ROOT / "knowledge" / "chroma_db"))
     train_data_path: Path = field(default_factory=lambda: _env_path("AGENT_DISTILL_TRAIN_DATA_PATH", PROJECT_ROOT / "distill" / "data" / "agent_distill_train.jsonl"))
+    trajectory_data_path: Path = field(default_factory=lambda: _env_path("AGENT_DISTILL_TRAJECTORY_DATA_PATH", PROJECT_ROOT / "distill" / "data" / "agent_trajectory.jsonl"))
+    hard_example_path: Path = field(default_factory=lambda: _env_path("AGENT_DISTILL_HARD_EXAMPLE_PATH", PROJECT_ROOT / "distill" / "data" / "hard_examples.jsonl"))
     tools_config_path: Path = field(default_factory=lambda: _env_path("AGENT_DISTILL_TOOLS_CONFIG_PATH", PROJECT_ROOT / "distill" / "tools_config.json"))
     lora_output_dir: Path = field(default_factory=lambda: _env_path("AGENT_DISTILL_LORA_OUTPUT_DIR", Path(r"D:\py\Agent_Distill\qwen_mcp_lora_output")))
     merged_model_dir: Path = field(default_factory=lambda: _env_path("AGENT_DISTILL_MERGED_MODEL_DIR", PROJECT_ROOT / "qwen_merged"))
     mcp_server_path: Path = field(default_factory=lambda: _env_path("AGENT_DISTILL_MCP_SERVER_PATH", PROJECT_ROOT / "mcp_service" / "server.py"))
+    qwen35_model_path: str = field(default_factory=lambda: _env("AGENT_DISTILL_QWEN35_MODEL_PATH", r"D:\py\Qwen3.5-2B"))
+    qwen35_lora_output_dir: Path = field(default_factory=lambda: _env_path("AGENT_DISTILL_QWEN35_LORA_OUTPUT_DIR", PROJECT_ROOT / "qwen35_lora"))
 
     base_model_path: str = field(default_factory=lambda: _env("AGENT_DISTILL_BASE_MODEL_PATH", r"D:\py\Qwen2.5-1.5B"))
     embedding_model_name: str = field(default_factory=lambda: _env("AGENT_DISTILL_EMBEDDING_MODEL", "shibing624/text2vec-base-chinese"))
@@ -53,7 +57,9 @@ class Settings:
     max_history_turns: int = field(default_factory=lambda: _env_int("AGENT_DISTILL_MAX_HISTORY_TURNS", 3))
     law_snippet_limit: int = field(default_factory=lambda: _env_int("AGENT_DISTILL_LAW_SNIPPET_LIMIT", 600))
     retrieval_top_k: int = field(default_factory=lambda: _env_int("AGENT_DISTILL_RETRIEVAL_TOP_K", 3))
+    trajectory_max_tokens: int = field(default_factory=lambda: _env_int("AGENT_DISTILL_TRAJECTORY_MAX_TOKENS", 1024))
     log_level: str = field(default_factory=lambda: _env("AGENT_DISTILL_LOG_LEVEL", "INFO"))
+    hf_local_files_only: bool = field(default_factory=lambda: _env("HF_HUB_OFFLINE", "0") == "1")
 
 
 settings = Settings()
