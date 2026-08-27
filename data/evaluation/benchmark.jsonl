@@ -1,0 +1,14 @@
+{"id":"routing-001","category":"routing","question":"公司要求员工周末加班但不给加班费怎么办？","gold":"labor"}
+{"id":"routing-002","category":"routing","question":"租房期间房东拒绝退还押金怎么办？","gold":"civil"}
+{"id":"routing-003","category":"routing","question":"被公司突然辞退，劳动合同还没到期怎么办？","gold":"labor"}
+{"id":"routing-004","category":"routing","question":"朋友借钱后一直不还，我可以起诉吗？","gold":"civil"}
+{"id":"tool-001","category":"tool_calling","question":"查询劳动法中关于加班工资的规定","gold":{"name":"legal_regulation_search","arguments":{"query":"加班工资"}}}
+{"id":"tool-002","category":"tool_calling","question":"查询劳动仲裁相关规定","gold":{"name":"legal_regulation_search","arguments":{"query":"劳动仲裁"}}}
+{"id":"workflow-001","category":"workflow","question":"员工被违法辞退，要求判断是否属于劳动争议并给出处理路径","gold":"route_retrieve_generate_verify"}
+{"id":"workflow-002","category":"workflow","question":"租赁合同发生违约，先检索合同依据再给出建议","gold":"route_retrieve_generate_verify"}
+{"id":"answer-001","category":"answer","question":"公司不给加班费，我应该先做什么？","gold":"先保存劳动合同、考勤、工资及加班记录等证据，再向公司提出支付加班工资的请求；协商不成时，可依法申请劳动仲裁。"}
+{"id":"answer-002","category":"answer","question":"朋友借钱不还，应该怎么办？","gold":"先保存借条、转账记录和催款记录等证据，并明确要求对方还款；协商不成时，可以根据证据情况依法提起民事诉讼。"}
+{"id":"answer_citation-001","category":"answer_citation","question":"回答加班工资问题时应引用哪些证据？","gold":["labor_overtime_regulation"]}
+{"id":"answer_citation-002","category":"answer_citation","question":"回答借款纠纷时应引用哪些证据？","gold":["civil_loan_regulation"]}
+{"id":"multi-001","category":"multi_turn","conversation":[{"role":"user","content":"我被公司辞退了。"},{"role":"user","content":"没有提前通知，也没有给赔偿。"}],"gold":"labor_termination_compensation"}
+{"id":"multi-002","category":"multi_turn","conversation":[{"role":"user","content":"我借给朋友5万元。"},{"role":"user","content":"已经催了很多次还是不还。"}],"gold":"civil_loan_recovery"}
