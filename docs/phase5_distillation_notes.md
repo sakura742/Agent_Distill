@@ -4,7 +4,7 @@
 
 在 Phase 4 LangGraph Runtime 上接入 Qwen3.5-2B，并把教师模型产生的 Agent 执行轨迹转化为结构化监督数据，再通过 LoRA 将路由、工具调用、证据使用和最终回答能力迁移到本地小模型。
 
-Qwen3.5-2B 已提供 Transformers 格式权重，并可通过 Transformers、vLLM、SGLang 等方式部署；本项目 Phase 5 先采用 Transformers + FastAPI 的本地 Serving，避免把 Runtime 与具体推理框架耦合。 citeturn0search0turn0search1
+Qwen3.5-2B 提供 Transformers 格式权重，并可通过 Transformers、vLLM、SGLang 等方式部署；本项目 Phase 5 先采用 Transformers + FastAPI 的本地 Serving，避免把 Runtime 与具体推理框架耦合。
 
 ## 架构
 
