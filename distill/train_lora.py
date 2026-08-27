@@ -31,15 +31,6 @@ def _load_records(path: Path):
     return Dataset.from_list(rows)
 
 
-def _dtype_for_gpu():
-    import torch
-
-    if not torch.cuda.is_available():
-        return torch.float32
-    # RTX 40-series supports bf16, but fp16 is kept as an explicit CLI choice.
-    return torch.float16
-
-
 def _load_model_and_tokenizer(args):
     import torch
     from transformers import AutoModelForCausalLM, AutoTokenizer
@@ -51,21 +42,16 @@ def _load_model_and_tokenizer(args):
     model_kwargs = {
         "trust_remote_code": True,
         "device_map": "auto",
-        "dtype": _dtype_for_gpu(),
     }
 
     if args.load_in_4bit:
         try:
             from transformers import BitsAndBytesConfig
-        except ImportError as exc:
-            raise RuntimeError("This Transformers build does not expose BitsAndBytesConfig") from exc
-
-        try:
             import bitsandbytes  # noqa: F401
         except ImportError as exc:
             raise RuntimeError(
-                "--load-in-4bit requires bitsandbytes. Install a compatible build, "
-                "or rerun with --no-load-in-4bit."
+                "--load-in-4bit requires a compatible bitsandbytes installation. "
+                "For the first Windows smoke test, use --no-load-in-4bit."
             ) from exc
 
         model_kwargs["quantization_config"] = BitsAndBytesConfig(
@@ -74,17 +60,11 @@ def _load_model_and_tokenizer(args):
             bnb_4bit_compute_dtype=torch.float16,
             bnb_4bit_use_double_quant=True,
         )
-        # Quantized training must not use an explicit CPU float32 placement.
-        model_kwargs.pop("dtype", None)
+    else:
+        model_kwargs["dtype"] = torch.float16 if torch.cuda.is_available() else torch.float32
 
     model = AutoModelForCausalLM.from_pretrained(args.model, **model_kwargs)
     return model, tokenizer
-
-
-def _prepare_quantized_model(model):
-    from peft import prepare_model_for_kbit_training
-
-    return prepare_model_for_kbit_training(model)
 
 
 def train(args: argparse.Namespace) -> None:
@@ -96,7 +76,8 @@ def train(args: argparse.Namespace) -> None:
     model, tokenizer = _load_model_and_tokenizer(args)
 
     if args.load_in_4bit:
-        model = _prepare_quantized_model(model)
+        from peft import prepare_model_for_kbit_training
+        model = prepare_model_for_kbit_training(model)
 
     peft_config = LoraConfig(
         r=args.lora_r,
@@ -117,7 +98,7 @@ def train(args: argparse.Namespace) -> None:
         logging_steps=args.logging_steps,
         save_steps=args.save_steps,
         save_strategy="steps",
-        fp16=args.fp16,
+        fp16=args.fp16 and not args.bf16,
         bf16=args.bf16,
         gradient_checkpointing=args.gradient_checkpointing,
         gradient_checkpointing_kwargs={"use_reentrant": False},
@@ -145,8 +126,10 @@ def train(args: argparse.Namespace) -> None:
             "base_model": str(args.model),
             "train_file": str(args.train_file),
             "load_in_4bit": args.load_in_4bit,
+            "max_seq_length": args.max_seq_length,
             "lora_r": args.lora_r,
             "lora_alpha": args.lora_alpha,
+            "lora_dropout": args.lora_dropout,
             "target_modules": args.target_modules.split(","),
         }
     )
@@ -179,7 +162,7 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--load-in-4bit", action=argparse.BooleanOptionalAction, default=True)
     p.add_argument("--gradient-checkpointing", action=argparse.BooleanOptionalAction, default=True)
     p.add_argument("--bf16", action="store_true")
-    p.add_argument("--fp16", action="store_true", default=True)
+    p.add_argument("--fp16", action=argparse.BooleanOptionalAction, default=True)
     return p
 
 
