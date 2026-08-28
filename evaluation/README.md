@@ -1,30 +1,47 @@
 # Phase 6 Benchmark / Evaluation
 
-Phase 6 evaluates observable Agent capability rather than hidden reasoning.
+## Benchmark
 
-## Six benchmark tracks
+当前主 Benchmark 共 **40 个法律场景**，覆盖：
 
-1. **Routing** — domain/intent routing accuracy.
-2. **Retrieval** — Recall@K and MRR against gold document IDs.
-3. **Tool Calling** — tool selection and argument accuracy.
-4. **Workflow** — expected state transition / task success rate.
-5. **Answer** — reference-aligned answer quality; baseline token-overlap F1 is provided, while judge-based evaluation can be added later.
-6. **Multi-turn** — conversation-level success rate.
+- Routing：10
+- Retrieval：6
+- Tool Calling：6
+- Workflow：6
+- Answer：6
+- Citation：6
 
-Citation quality is tracked separately with citation precision/recall.
+主对照严格限定为 **Qwen3.5-4B Raw vs Qwen3.5-4B LoRA**，两者共享 Runtime、RAG、Tool Contract、Benchmark 与生成配置。
 
-## JSONL
+## Metrics
 
-See `benchmark_schema.json`. A minimal routing record is:
+- Retrieval：Recall@5、MRR
+- Tool：Tool Selection Accuracy、Parameter Accuracy
+- Workflow：Workflow Success Rate、Interruption Error Rate
+- Answer：Token-overlap F1
+- Citation：Precision、Recall、Exact Accuracy
+- System：Runtime Error Rate、Average Latency
 
-```json
-{"category":"routing","question":"公司裁员不给赔偿怎么办？","gold":"labor","prediction":"labor"}
-```
+所有指标均由实际逐样本输出计算，不预填结果。
 
-## Run
+## Error Analysis / Iteration
+
+`evaluation.error_analysis` 对失败样本进行分类：routing、retrieval、tool selection、tool parameter、workflow、citation、runtime、verification、retry/interruption 等，并按错误数量生成 hard score。
+
+`evaluation.iteration` 将 Raw / LoRA 结果做 paired comparison，输出指标增量、错误分布以及相对错误率下降；其中 **35% 是实验验收目标，不是预设结果**。
 
 ```bash
-python -m evaluation.run_benchmark evaluation/benchmark.jsonl
+python -m evaluation.run_qwen35_benchmark
+python -m evaluation.iteration \
+  data/evaluation/results/qwen35_4b_raw.json \
+  data/evaluation/results/qwen35_4b_lora.json
 ```
 
-The evaluator intentionally does not manufacture benchmark numbers. Metrics are emitted only from actual benchmark records.
+输出：
+
+```text
+data/evaluation/results/qwen35_4b_raw.json
+data/evaluation/results/qwen35_4b_lora.json
+data/evaluation/iteration_report.json
+distill/data/evaluation_hard_examples.jsonl
+```
