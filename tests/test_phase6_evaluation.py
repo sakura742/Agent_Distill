@@ -20,7 +20,8 @@ def test_retrieval_metrics():
     retrieved = [["a", "b", "c"], ["x", "y"]]
     relevant = [["b"], ["z"]]
     assert recall_at_k(retrieved, relevant, 5) == 0.5
-    assert mrr(retrieved, relevant) == 0.5
+    # Query 1 has reciprocal rank 1/2; query 2 has no hit -> MRR=(0.5+0)/2=0.25.
+    assert mrr(retrieved, relevant) == 0.25
 
 
 def test_citation_metrics():
