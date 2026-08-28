@@ -1,11 +1,27 @@
-"""Dataset schema and benchmark runner for observable Agent behavior."""
+"""Dataset schema and deterministic evaluator for observable Agent behavior."""
 from __future__ import annotations
+
 import json
 from pathlib import Path
 from typing import Any
-from .metrics import accuracy, recall_at_k, mrr, citation_precision, citation_recall, token_overlap_f1
 
-CATEGORIES = ("routing", "retrieval", "tool_calling", "workflow", "answer", "multi_turn")
+from .metrics import (
+    accuracy,
+    argument_accuracy,
+    citation_accuracy,
+    citation_precision,
+    citation_recall,
+    interruption_error,
+    mrr,
+    recall_at_k,
+    token_overlap_f1,
+    workflow_success,
+)
+
+CATEGORIES = (
+    "routing", "retrieval", "tool_calling", "workflow", "answer",
+    "answer_citation", "multi_turn",
+)
 
 
 def load_jsonl(path: str | Path) -> list[dict[str, Any]]:
@@ -14,33 +30,69 @@ def load_jsonl(path: str | Path) -> list[dict[str, Any]]:
 
 
 def evaluate(records: list[dict[str, Any]]) -> dict[str, Any]:
-    by={c:[] for c in CATEGORIES}
-    for r in records:
-        by.setdefault(r.get("category", "answer"), []).append(r)
-    out={}
-    routing=by["routing"]
-    if routing: out["routing_accuracy"]=accuracy([r.get("prediction") for r in routing],[r.get("gold") for r in routing])
-    retrieval=by["retrieval"]
-    if retrieval:
-        out["retrieval_recall_at_5"]=recall_at_k([r.get("retrieved",[]) for r in retrieval],[r.get("relevant",[]) for r in retrieval],5)
-        out["retrieval_mrr"]=mrr([r.get("retrieved",[]) for r in retrieval],[r.get("relevant",[]) for r in retrieval])
-    tools=by["tool_calling"]
-    if tools:
-        out["tool_selection_accuracy"]=accuracy([r.get("prediction",{}).get("name") for r in tools],[r.get("gold",{}).get("name") for r in tools])
-        out["tool_argument_accuracy"]=accuracy([json.dumps(r.get("prediction",{}).get("arguments",{}),sort_keys=True,ensure_ascii=False) for r in tools],[json.dumps(r.get("gold",{}).get("arguments",{}),sort_keys=True,ensure_ascii=False) for r in tools])
-    workflows=by["workflow"]
-    if workflows: out["workflow_success_rate"]=accuracy([r.get("prediction") for r in workflows],[r.get("gold") for r in workflows])
-    answers=by["answer"]
-    if answers: out["answer_token_overlap_f1"]=sum(token_overlap_f1(r.get("prediction",""),r.get("gold","")) for r in answers)/len(answers)
-    multi=by["multi_turn"]
-    if multi: out["multi_turn_success_rate"]=accuracy([r.get("prediction") for r in multi],[r.get("gold") for r in multi])
+    by = {c: [] for c in CATEGORIES}
+    for record in records:
+        by.setdefault(record.get("category", "answer"), []).append(record)
+    out: dict[str, Any] = {}
+
+    if by["routing"]:
+        out["routing_accuracy"] = accuracy(
+            [r.get("prediction") for r in by["routing"]],
+            [r.get("gold") for r in by["routing"]],
+        )
+    if by["retrieval"]:
+        out["retrieval_recall_at_5"] = recall_at_k(
+            [r.get("retrieved", []) for r in by["retrieval"]],
+            [r.get("gold", r.get("relevant", [])) for r in by["retrieval"]],
+            5,
+        )
+        out["retrieval_mrr"] = mrr(
+            [r.get("retrieved", []) for r in by["retrieval"]],
+            [r.get("gold", r.get("relevant", [])) for r in by["retrieval"]],
+        )
+    if by["tool_calling"]:
+        tools = by["tool_calling"]
+        out["tool_selection_accuracy"] = accuracy(
+            [r.get("prediction", {}).get("name") for r in tools],
+            [r.get("gold", {}).get("name") for r in tools],
+        )
+        out["tool_argument_accuracy"] = sum(
+            argument_accuracy(
+                r.get("prediction", {}).get("arguments", {}),
+                r.get("gold", {}).get("arguments", {}),
+            ) for r in tools
+        ) / len(tools)
+    if by["workflow"]:
+        out["workflow_success_rate"] = sum(
+            workflow_success(r.get("trace", []), r.get("verification", {}))
+            for r in by["workflow"]
+        ) / len(by["workflow"])
+        out["interruption_error_rate"] = sum(
+            interruption_error(r.get("trace", []), r.get("verification", {}))
+            for r in by["workflow"]
+        ) / len(by["workflow"])
+    if by["answer"]:
+        out["answer_token_overlap_f1"] = sum(
+            token_overlap_f1(r.get("prediction", ""), r.get("gold", ""))
+            for r in by["answer"]
+        ) / len(by["answer"])
+    if by["answer_citation"]:
+        citations = by["answer_citation"]
+        out["citation_precision"] = sum(
+            citation_precision(r.get("predicted", r.get("citations", [])), r.get("gold", []))
+            for r in citations
+        ) / len(citations)
+        out["citation_recall"] = sum(
+            citation_recall(r.get("predicted", r.get("citations", [])), r.get("gold", []))
+            for r in citations
+        ) / len(citations)
+        out["citation_accuracy"] = sum(
+            citation_accuracy(r.get("predicted", r.get("citations", [])), r.get("gold", []))
+            for r in citations
+        ) / len(citations)
+    if by["multi_turn"]:
+        out["multi_turn_success_rate"] = accuracy(
+            [r.get("prediction") for r in by["multi_turn"]],
+            [r.get("gold") for r in by["multi_turn"]],
+        )
     return out
-
-
-def evaluate_citations(records: list[dict[str, Any]]) -> dict[str,float]:
-    if not records: return {"citation_precision":0.0,"citation_recall":0.0}
-    ps=[]; rs=[]
-    for r in records:
-        ps.append(citation_precision(r.get("predicted",[]),r.get("gold",[])))
-        rs.append(citation_recall(r.get("predicted",[]),r.get("gold",[])))
-    return {"citation_precision":sum(ps)/len(ps),"citation_recall":sum(rs)/len(rs)}
