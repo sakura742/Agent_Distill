@@ -64,7 +64,12 @@ class LegalRetriever:
         if article:
             filters["article"] = article
 
-        raw = self.vectorstore.similarity_search_with_relevance_scores(
+        # Chroma's `similarity_search_with_relevance_scores` applies a
+        # relevance function whose range assumptions vary across Chroma
+        # versions/collection distance settings.  The benchmark only needs a
+        # stable ranking, so read the native distance and convert cosine
+        # distance to a bounded [0, 1] similarity ourselves.
+        raw = self.vectorstore.similarity_search_with_score(
             query,
             k=candidate_k,
             filter=filters,
@@ -73,9 +78,9 @@ class LegalRetriever:
             RetrievedChunk(
                 content=document.page_content,
                 metadata=document.metadata,
-                score=float(score),
+                score=max(0.0, min(1.0, 1.0 - float(distance) / 2.0)),
             )
-            for document, score in raw
+            for document, distance in raw
         ]
 
         if rerank and len(results) > 1:
