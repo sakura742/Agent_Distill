@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from functools import lru_cache
 from typing import Any
 
 from langchain_community.embeddings import HuggingFaceEmbeddings
@@ -21,12 +22,19 @@ class RetrievedChunk:
     score: float
 
 
+@lru_cache(maxsize=1)
+def _get_embeddings() -> HuggingFaceEmbeddings:
+    """Load the embedding checkpoint once per process."""
+    return HuggingFaceEmbeddings(model_name=settings.embedding_model_name)
+
+
 class LegalRetriever:
     def __init__(self, domain: str):
         corpus = corpus_by_domain(domain)
         self.domain = domain
         self.collection = corpus.collection
-        self.embeddings = HuggingFaceEmbeddings(model_name=settings.embedding_model_name)
+        # All domain retrievers share the same embedding model instance.
+        self.embeddings = _get_embeddings()
         try:
             self.vectorstore = Chroma(
                 collection_name=self.collection,
@@ -64,11 +72,6 @@ class LegalRetriever:
         if article:
             filters["article"] = article
 
-        # Chroma's `similarity_search_with_relevance_scores` applies a
-        # relevance function whose range assumptions vary across Chroma
-        # versions/collection distance settings.  The benchmark only needs a
-        # stable ranking, so read the native distance and convert cosine
-        # distance to a bounded [0, 1] similarity ourselves.
         raw = self.vectorstore.similarity_search_with_score(
             query,
             k=candidate_k,
@@ -104,7 +107,6 @@ class LegalRetriever:
                 )
             ]
         except Exception:
-            # Reranker 属于可选增强，不应让基础 RAG 因模型缺失而不可用。
             return results
 
 
