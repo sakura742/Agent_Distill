@@ -21,10 +21,39 @@ from .metrics import (
 
 EVAL_CATEGORIES = {"routing", "retrieval", "tool_calling", "workflow", "answer", "answer_citation"}
 
+# routing / retrieval / tool_calling 的指标（routing_accuracy、recall@5、mrr、
+# tool_selection/argument_accuracy）全部来自 intent_analysis / tool_decision /
+# retrieval 节点，不依赖 generation 节点产出的 answer 文本。让这些 case 也去做一次
+# 512 token 的真实生成纯属浪费算力（约占 40 条 benchmark 的 55%），是之前
+# "40 条跑几个小时"的主要原因之一。
+_NEEDS_REAL_ANSWER = {"workflow", "answer", "answer_citation"}
+
 
 def _refs(state: dict[str, Any]) -> list[str]:
     docs = state.get("retrieved_documents") or state.get("citations") or []
     return [d.get("reference", "") for d in docs if isinstance(d, dict) and d.get("reference")]
+
+
+class CategoryAwareGenerator:
+    """按 case 类别决定是否需要真实调用 Qwen3.5 生成。
+
+    对不需要 answer 文本的类别，复用 agent/runtime/nodes.generation() 里
+    原本就有的 fallback 模板，只是为了让 verification 节点看到非空
+    answer + citations（避免触发 retry_plan 反而更慢），并不影响该类别
+    实际使用的指标。
+    """
+
+    def __init__(self, real_generator, row_by_question: dict[str, str]) -> None:
+        self.real_generator = real_generator
+        self.row_by_question = row_by_question
+
+    def __call__(self, question: str, evidence: str, citations: list[dict[str, Any]]) -> str:
+        category = self.row_by_question.get(question)
+        if category not in _NEEDS_REAL_ANSWER:
+            if evidence:
+                return "根据检索到的法律依据，建议结合以下条款进一步判断：\n\n" + evidence
+            return "暂未检索到足够的法律依据，无法给出可靠结论。"
+        return self.real_generator(question, evidence, citations)
 
 
 def run(model_name: str, model_path: str, adapter: str | None, rows: list[dict[str, Any]]) -> dict[str, Any]:
@@ -41,7 +70,9 @@ def run(model_name: str, model_path: str, adapter: str | None, rows: list[dict[s
             raise FileNotFoundError(f"Not a PEFT adapter directory (adapter_config.json missing): {adapter_dir}")
 
     service = Qwen35Service(model_path=str(model_dir), adapter_path=adapter)
-    graph = build_legal_agent_graph(answer_generator=Qwen35AnswerGenerator(service))
+    row_by_question = {row["question"]: row.get("category") for row in rows if "question" in row}
+    generator = CategoryAwareGenerator(Qwen35AnswerGenerator(service), row_by_question)
+    graph = build_legal_agent_graph(answer_generator=generator)
     outputs: list[dict[str, Any]] = []
 
     for index, row in enumerate(rows, 1):

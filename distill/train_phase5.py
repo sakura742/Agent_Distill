@@ -54,7 +54,7 @@ def train() -> None:
     model = AutoModelForCausalLM.from_pretrained(model_path, quantization_config=quantization_config, device_map="auto", trust_remote_code=True, local_files_only=settings.hf_local_files_only)
     model.gradient_checkpointing_enable(); model.enable_input_require_grads()
     peft_config = LoraConfig(task_type=TaskType.CAUSAL_LM, r=8, lora_alpha=16, lora_dropout=0.05, target_modules=["q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "up_proj", "down_proj"])
-    args = SFTConfig(output_dir=str(settings.qwen35_lora_output_dir), per_device_train_batch_size=1, gradient_accumulation_steps=8, learning_rate=1e-4, num_train_epochs=2, logging_steps=5, save_strategy="epoch", bf16=True, report_to="none", optim="paged_adamw_8bit", remove_unused_columns=False, max_length=2048, dataset_num_proc=1, packing=False)
+    args = SFTConfig(output_dir=str(settings.qwen35_lora_output_dir), per_device_train_batch_size=1, gradient_accumulation_steps=4, learning_rate=1e-4, num_train_epochs=1, logging_steps=5, save_strategy="epoch", bf16=True, report_to="none", optim="paged_adamw_8bit", remove_unused_columns=False, max_length=768, dataset_num_proc=1, packing=False)
     trainer = SFTTrainer(model=model, train_dataset=dataset, peft_config=peft_config, processing_class=tokenizer, args=args)
     trainer.train(); Path(settings.qwen35_lora_output_dir).mkdir(parents=True, exist_ok=True)
     trainer.model.save_pretrained(settings.qwen35_lora_output_dir); tokenizer.save_pretrained(settings.qwen35_lora_output_dir)

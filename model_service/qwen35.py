@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from typing import Any
 
 import torch
-from transformers import AutoModelForCausalLM, AutoTokenizer
+from transformers import AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig
 
 from configs.settings import settings
 
@@ -43,8 +43,20 @@ class Qwen35Service:
         kwargs: dict[str, Any] = {
             "device_map": "auto", "low_cpu_mem_usage": True,
             "trust_remote_code": True, "local_files_only": settings.hf_local_files_only,
+            "attn_implementation": "sdpa",
         }
-        kwargs["dtype"] = torch.bfloat16 if torch.cuda.is_available() else torch.float32
+        if torch.cuda.is_available():
+            # 与 distill/train_phase5.py 的量化配置保持一致：LoRA adapter 就是在
+            # 4bit NF4 基座上训练出来的，评估时不量化会在 8GB 显存下触发
+            # accelerate 的 CPU offload（大量层间数据搬运），导致推理极慢。
+            kwargs["quantization_config"] = BitsAndBytesConfig(
+                load_in_4bit=True,
+                bnb_4bit_quant_type="nf4",
+                bnb_4bit_compute_dtype=torch.bfloat16,
+                bnb_4bit_use_double_quant=True,
+            )
+        else:
+            kwargs["dtype"] = torch.float32
         self._model = AutoModelForCausalLM.from_pretrained(self.model_path, **kwargs)
         if self.adapter_path:
             from peft import PeftModel

@@ -1,6 +1,7 @@
 """Deterministic metrics used by the Phase 6 Agent benchmark."""
 from __future__ import annotations
 from collections import Counter
+import re
 from typing import Any, Sequence
 
 
@@ -59,7 +60,16 @@ def f1(precision: float, recall: float) -> float:
     return 2*precision*recall/(precision+recall) if precision+recall else 0.0
 
 
+def _tokenize(text: str) -> list[str]:
+    """中文法律问答场景没有空格分词，`str.split()` 会把整段中文当成一个
+    token，导致 gold/prediction 几乎不可能重叠、F1 恒为 0（与模型质量无关，
+    是评估口径 bug）。这里按 Unicode 汉字逐字切分，连续的英文/数字当作
+    一个 token 处理，不依赖 jieba 等分词库。
+    """
+    return re.findall(r"[\u4e00-\u9fff]|[A-Za-z0-9]+", text)
+
+
 def token_overlap_f1(prediction: str, reference: str) -> float:
-    a=Counter(prediction.split()); b=Counter(reference.split())
+    a = Counter(_tokenize(prediction)); b = Counter(_tokenize(reference))
     common=sum((a & b).values()); p=common/sum(a.values()) if a else 0.0; r=common/sum(b.values()) if b else 0.0
     return f1(p,r)

@@ -71,17 +71,39 @@ def collect_trajectory(question: str, client: OpenAI | None = None) -> dict[str,
     }
 
 
+def _existing_questions(output: Path) -> set[str]:
+    if not output.exists():
+        return set()
+    seen: set[str] = set()
+    with output.open("r", encoding="utf-8") as f:
+        for line in f:
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                seen.add(json.loads(line)["question"])
+            except (json.JSONDecodeError, KeyError):
+                continue
+    return seen
+
+
 def write_trajectories(questions: list[str], output: Path | None = None) -> int:
     if not settings.deepseek_api_key:
         raise RuntimeError("未配置 DEEPSEEK_API_KEY")
     output = output or settings.trajectory_data_path
     output.parent.mkdir(parents=True, exist_ok=True)
+    # 输出文件是 "a" 追加写入的：脚本多次运行（例如中途失败后重跑）会对
+    # 同一个问题重复调用付费的 DeepSeek teacher API。这里跳过已经收集过的问题。
+    seen = _existing_questions(output)
     client = OpenAI(api_key=settings.deepseek_api_key, base_url=settings.deepseek_base_url)
     count = 0
     with output.open("a", encoding="utf-8") as f:
         for question in questions:
+            if question in seen:
+                continue
             record = collect_trajectory(question, client)
             f.write(json.dumps(record, ensure_ascii=False) + "\n")
+            seen.add(question)
             count += 1
     return count
 
