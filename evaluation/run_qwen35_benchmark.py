@@ -1,8 +1,4 @@
-"""End-to-end Phase 6 benchmark: Qwen3.5-4B Raw vs Qwen3.5-4B LoRA.
-
-Both variants use the same LangGraph Runtime, RAG corpus, tool contracts and
-benchmark. Metrics are computed from observable state/trace.
-"""
+"""End-to-end Phase 6 benchmark for Qwen3.5-4B Raw / LoRA."""
 from __future__ import annotations
 
 import argparse
@@ -108,15 +104,36 @@ def main() -> None:
     p.add_argument("--lora-path", default=str(settings.qwen35_lora_output_dir))
     p.add_argument("--raw-output", default="data/evaluation/results/qwen35_4b_raw.json")
     p.add_argument("--lora-output", default="data/evaluation/results/qwen35_4b_lora.json")
+    p.add_argument("--limit", type=int, default=None, help="只运行前 N 个有效 Benchmark case")
+    p.add_argument("--category", choices=sorted(EVAL_CATEGORIES), default=None, help="只运行指定评估维度")
+    p.add_argument("--model", choices=("raw", "lora", "both"), default="both", help="当前实验运行 Raw、LoRA 或两者")
     args = p.parse_args()
 
+    if args.limit is not None and args.limit < 1:
+        p.error("--limit 必须 >= 1")
+
     rows = load_jsonl(args.benchmark)
-    raw = run("Qwen3.5-4B Raw", args.model_path, None, rows)
-    lora = run("Qwen3.5-4B LoRA", args.model_path, args.lora_path, rows)
-    for path, result in ((args.raw_output, raw), (args.lora_output, lora)):
-        output = Path(path); output.parent.mkdir(parents=True, exist_ok=True)
-        output.write_text(json.dumps(result, ensure_ascii=False, indent=2), encoding="utf-8")
-    print(json.dumps({"raw": raw["metrics"], "lora": lora["metrics"]}, ensure_ascii=False, indent=2))
+    rows = [r for r in rows if r.get("category") in EVAL_CATEGORIES and "question" in r]
+    if args.category:
+        rows = [r for r in rows if r.get("category") == args.category]
+    if args.limit is not None:
+        rows = rows[:args.limit]
+    if not rows:
+        p.error("没有可运行的 Benchmark case")
+
+    results: dict[str, dict[str, Any]] = {}
+    if args.model in ("raw", "both"):
+        raw = run("Qwen3.5-4B Raw", args.model_path, None, rows)
+        results["raw"] = raw
+        output = Path(args.raw_output); output.parent.mkdir(parents=True, exist_ok=True)
+        output.write_text(json.dumps(raw, ensure_ascii=False, indent=2), encoding="utf-8")
+    if args.model in ("lora", "both"):
+        lora = run("Qwen3.5-4B LoRA", args.model_path, args.lora_path, rows)
+        results["lora"] = lora
+        output = Path(args.lora_output); output.parent.mkdir(parents=True, exist_ok=True)
+        output.write_text(json.dumps(lora, ensure_ascii=False, indent=2), encoding="utf-8")
+
+    print(json.dumps({key: value["metrics"] for key, value in results.items()}, ensure_ascii=False, indent=2))
 
 
 if __name__ == "__main__":
