@@ -45,7 +45,7 @@ class Settings:
     mcp_server_path: Path = field(default_factory=lambda: _env_path("AGENT_DISTILL_MCP_SERVER_PATH", PROJECT_ROOT / "mcp_service" / "server.py"))
 
     # Phase 5/6 experiment model: Qwen3.5-4B Raw vs Qwen3.5-4B LoRA.
-    qwen35_model_path: str = field(default_factory=lambda: _env("AGENT_DISTILL_QWEN35_MODEL_PATH", r"D:\py\Qwen3.5-4B"))
+    qwen35_model_path: str = field(default_factory=lambda: _env("AGENT_DISTILL_QWEN35_MODEL_PATH", r"D:\py\models"))
     qwen35_lora_output_dir: Path = field(default_factory=lambda: _env_path("AGENT_DISTILL_QWEN35_LORA_OUTPUT_DIR", PROJECT_ROOT / "qwen35_lora"))
 
     base_model_path: str = field(default_factory=lambda: _env("AGENT_DISTILL_BASE_MODEL_PATH", r"D:\py\Qwen2.5-1.5B"))
