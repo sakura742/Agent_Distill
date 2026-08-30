@@ -1,0 +1,614 @@
+{
+  "model": "Qwen3.5-4B Raw",
+  "model_path": "D:\\py\\models",
+  "adapter_path": null,
+  "metrics": {
+    "citation_precision": 0.0,
+    "citation_recall": 0.0,
+    "citation_accuracy": 0.0,
+    "avg_latency_ms": 36947.79,
+    "error_rate": 0.0
+  },
+  "predictions": [
+    {
+      "id": "answer_citation-001",
+      "category": "answer_citation",
+      "question": "回答加班工资问题时应引用哪些证据？",
+      "gold": [
+        "labor_overtime_regulation"
+      ],
+      "prediction": "Thinking Process:\n\n1.  **Analyze the Request:**\n    *   Role: Legal Agent (法律 Agent).\n    *   Constraint: Can only answer based on the provided search evidence (检索证据). If evidence is insufficient, explicitly state that.\n    *   Question: What evidence should be cited when answering questions about overtime pay (加班工资)? (回答加班工资问题时应引用哪些证据？)\n    *   Provided Evidence: Four snippets from \"中华人民共和国劳动法及相关法律\" (Labor Law and Related Laws).\n        *   Snippet 1 (p.21): Articles 104, 105, 106, 107 (General provisions, penalties, implementation steps, effective date).\n        *   Snippet 2 (p.10): Article 44 (Overtime pay standards).\n        *   Snippet 3 (p.20): Articles 100, 101, 102, 103 (Social insurance, obstruction of inspection, liability for termination, administrative misconduct).\n        *   Snippet 4 (p.18): Article 91 (Penalties for withholding wages, etc.).\n        *   Snippet 5 (p.8): Article 33 (Collective contracts).\n\n2.  **Evaluate the Evidence regarding Overtime Pay:**\n    *   Snippet 1 (p.21): Discusses social insurance fund misappropriation, penalties, implementation steps, effective date. *No mention of overtime pay.*\n    *   Snippet 2 (p.10): **Article 44** explicitly states: \"有下列情形之一的，用人单位应当按照下列标准支付高于劳动者正常工作时间工资的工资报酬...\" (In the following circumstances, the employer shall pay wage remunation higher than the normal working time wage according to the following standards...). It lists:\n        *   (1) Extending working time: 150% of normal wage.\n        *   (2) Rest day work without compensatory leave: 200% of normal wage.\n        *   (3) Statutory holiday work: 300% of normal wage.\n        *   *This is directly relevant to overtime pay.*\n    *   Snippet 3 (p.20): Discusses social insurance, obstruction of inspection, liability for termination, administrative misconduct. *No mention of overtime pay.*",
+      "route_prediction": "labor",
+      "tool_prediction": {
+        "name": "search_labor_law",
+        "arguments": {
+          "query": "回答加班工资问题时应引用哪些证据？",
+          "limit": 5
+        }
+      },
+      "retrieved": [
+        "中华人民共和国劳动法及相关法律  | labor_law.pdf p.21",
+        "中华人民共和国劳动法及相关法律 四十四 | labor_law.pdf p.10",
+        "中华人民共和国劳动法及相关法律 一百 | labor_law.pdf p.20",
+        "中华人民共和国劳动法及相关法律 九十一 | labor_law.pdf p.18",
+        "中华人民共和国劳动法及相关法律 三十三 | labor_law.pdf p.8"
+      ],
+      "citations": [
+        "中华人民共和国劳动法及相关法律  | labor_law.pdf p.21",
+        "中华人民共和国劳动法及相关法律 四十四 | labor_law.pdf p.10",
+        "中华人民共和国劳动法及相关法律 一百 | labor_law.pdf p.20",
+        "中华人民共和国劳动法及相关法律 九十一 | labor_law.pdf p.18",
+        "中华人民共和国劳动法及相关法律 三十三 | labor_law.pdf p.8"
+      ],
+      "citation_details": [
+        {
+          "reference": "中华人民共和国劳动法及相关法律  | labor_law.pdf p.21",
+          "content": "—21—\n第一百零四条\n国家工作人员和社会保险基金经办机构的\n工作人员挪用社会保险基金，构成犯罪的，依法追究刑事责任。\n第一百零五条\n违反本法规定侵害劳动者合法权益，其他法\n律、行政法规已规定处罚的，依照该法律、行政法规的规定处罚。\n第十三章\n附则\n第一百零六条\n省、自治区、直辖市人民政府根据本法和本\n地区的实际情况，规定劳动合同制度的实施步骤，报国务院备案。\n第一百零七条\n本法自1995 年1 月1 日起施行。"
+        },
+        {
+          "reference": "中华人民共和国劳动法及相关法律 四十四 | labor_law.pdf p.10",
+          "content": "第四十四条\n有下列情形之一的，用人单位应当按照下列标\n准支付高于劳动者正常工作时间工资的工资报酬：\n（一）安排劳动者延长工作时间的，支付不低于工资的百分\n之一百五十的工资报酬；\n（二）休息日安排劳动者工作又不能安排补休的，支付不低\n于工资的百分之二百的工资报酬；\n（三）法定休假日安排劳动者工作的，支付不低于工资的百\n分之三百的工资报酬。"
+        },
+        {
+          "reference": "中华人民共和国劳动法及相关法律 一百 | labor_law.pdf p.20",
+          "content": "第一百条\n用人单位无故不缴纳社会保险费的，由劳动行政\n部门责令其限期缴纳；逾期不缴的，可以加收滞纳金。\n第一百零一条\n用人单位无理阻挠劳动行政部门、有关部门\n及其工作人员行使监督检查权，打击报复举报人员的，由劳动行\n政部门或者有关部门处以罚款；构成犯罪的，对责任人员依法追\n究刑事责任。\n第一百零二条\n劳动者违反本法规定的条件解除劳动合同\n或者违反劳动合同中约定的保密事项，对用人单位造成经济损失\n的，应当依法承担赔偿责任。\n第一百零三条\n劳动行政部门或者有关部门的工作人员滥\n用职权、玩忽职守、徇私舞弊，构成犯罪的，依法追究刑事责任；\n不构成犯罪的，给予行政处分。"
+        },
+        {
+          "reference": "中华人民共和国劳动法及相关法律 九十一 | labor_law.pdf p.18",
+          "content": "第九十一条\n用人单位有下列侵害劳动者合法权益情形之\n一的，由劳动行政部门责令支付劳动者的工资报酬、经济补偿，\n并可以责令支付赔偿金：\n（一）克扣或者无故拖欠劳动者工资的；"
+        },
+        {
+          "reference": "中华人民共和国劳动法及相关法律 三十三 | labor_law.pdf p.8",
+          "content": "第三十三条\n企业职工一方与企业可以就劳动报酬、工作时\n间、休息休假、劳动安全卫生、保险福利等事项，签订集体合同。\n集体合同草案应当提交职工代表大会或者全体职工讨论通过。\n集体合同由工会代表职工与企业签订；没有建立工会的企业，\n由职工推举的代表与企业签订。"
+        }
+      ],
+      "verification": {
+        "passed": true,
+        "citation_count": 5,
+        "reason": "answer_and_citations_present"
+      },
+      "trace": [
+        {
+          "node": "intent_analysis",
+          "method": "rule",
+          "domain": "labor"
+        },
+        {
+          "node": "task_planning",
+          "steps": [
+            "route_to_domain_tool",
+            "retrieve_legal_basis",
+            "generate_answer",
+            "verify_answer"
+          ]
+        },
+        {
+          "node": "tool_decision",
+          "tool": "search_labor_law"
+        },
+        {
+          "node": "tool_execution",
+          "tool": "search_labor_law",
+          "status": "success"
+        },
+        {
+          "node": "retrieval",
+          "documents": 5
+        },
+        {
+          "node": "generation",
+          "answer_length": 1839
+        },
+        {
+          "node": "verification",
+          "passed": true,
+          "citation_count": 5,
+          "reason": "answer_and_citations_present"
+        }
+      ],
+      "retry_count": 0,
+      "error": null,
+      "latency_ms": 50538.51
+    },
+    {
+      "id": "answer_citation-002",
+      "category": "answer_citation",
+      "question": "回答借款纠纷时应引用哪些证据？",
+      "gold": [
+        "civil_loan_regulation"
+      ],
+      "prediction": "Thinking Process:\n\n1.  **Analyze the Request:**\n    *   Role: Legal Agent (法律 Agent).\n    *   Constraint: Can only answer based on the provided search evidence (检索证据). If evidence is insufficient, must explicitly state that.\n    *   Question: What evidence should be cited when handling loan disputes (回答借款纠纷时应引用哪些证据)?\n    *   Provided Evidence: Four excerpts from the Civil Code of the People's Republic of China (中华人民共和国民法典).\n        *   Article 669: Borrower's duty to provide true information about business/financial status.\n        *   Article 764: Notification of receivables assignment in factoring (保理).\n        *   Article 387: Security interests (担保物权) and counter-guarantees (反担保).\n        *   Article 668: Written form of loan contracts, content of loan contracts (type, currency, purpose, amount, interest, term, repayment).\n        *   Article 685: Form of guarantee contracts (separate written contract or clause in main contract), establishment of guarantee contract.\n\n2.  **Evaluate the Evidence against the Question:**\n    *   Question: \"What evidence should be cited when handling loan disputes?\" (回答借款纠纷时应引用哪些证据？)\n    *   The provided evidence contains legal provisions regarding:\n        *   Borrower's disclosure obligations (Art 669).\n        *   Factoring/Receivables (Art 764) - *Not directly about loan disputes in the general sense, but related to secured financing.*\n        *   Security/Counter-guarantee (Art 387) - *Related to security in loans.*\n        *   Loan contract form and content (Art 668) - *Crucial for establishing the loan relationship.*\n        *   Guarantee contract form (Art 685) - *Related to guarantees in loans.*\n\n    *   The question asks for \"evidence\" (证据) to be cited. The provided text are *legal provisions* (法律条文), not specific *types of evidence* (like bank slips, transfer records, witness testimony, etc.) that are typically used in court proceedings.\n    *   However, in a legal context, \"citing evidence\" often means \"what legal basis or what types of documents prove the claim\". The provided text describes the *",
+      "route_prediction": "civil",
+      "tool_prediction": {
+        "name": "search_civil_law",
+        "arguments": {
+          "query": "回答借款纠纷时应引用哪些证据？",
+          "limit": 5
+        }
+      },
+      "retrieved": [
+        "中华人民共和国民法典 六百六十九 | minfa.pdf p.132",
+        "中华人民共和国民法典 七百六十四 | minfa.pdf p.149",
+        "中华人民共和国民法典 三百八十七 | minfa.pdf p.76",
+        "中华人民共和国民法典 六百六十八 | minfa.pdf p.132",
+        "中华人民共和国民法典 六百八十五 | minfa.pdf p.135"
+      ],
+      "citations": [
+        "中华人民共和国民法典 六百六十九 | minfa.pdf p.132",
+        "中华人民共和国民法典 七百六十四 | minfa.pdf p.149",
+        "中华人民共和国民法典 三百八十七 | minfa.pdf p.76",
+        "中华人民共和国民法典 六百六十八 | minfa.pdf p.132",
+        "中华人民共和国民法典 六百八十五 | minfa.pdf p.135"
+      ],
+      "citation_details": [
+        {
+          "reference": "中华人民共和国民法典 六百六十九 | minfa.pdf p.132",
+          "content": "第六百六十九条\n订立借款合同，借款人应当按照贷款人的要求提供与借款\n有关的业务活动和财务状况的真实情况。"
+        },
+        {
+          "reference": "中华人民共和国民法典 七百六十四 | minfa.pdf p.149",
+          "content": "第七百六十四条\n保理人向应收账款债务人发出应收账款转让通知的，应当\n表明保理人身份并附有必要凭证。"
+        },
+        {
+          "reference": "中华人民共和国民法典 三百八十七 | minfa.pdf p.76",
+          "content": "第三百八十七条\n债权人在借贷、买卖等民事活动中，为保障实现其债权，\n需要担保的，可以依照本法和其他法律的规定设立担保物权。\n第三人为债务人向债权人提供担保的，可以要求债务人提供反担保。反担保\n适用本法和其他法律的规定。"
+        },
+        {
+          "reference": "中华人民共和国民法典 六百六十八 | minfa.pdf p.132",
+          "content": "第六百六十八条\n借款合同应当采用书面形式，但是自然人之间借款另有约\n定的除外。\n借款合同的内容一般包括借款种类、币种、用途、数额、利率、期限和还款\n方式等条款。"
+        },
+        {
+          "reference": "中华人民共和国民法典 六百八十五 | minfa.pdf p.135",
+          "content": "第六百八十五条\n保证合同可以是单独订立的书面合同，也可以是主债权债\n务合同中的保证条款。\n第三人单方以书面形式向债权人作出保证，债权人接收且未提出异议的，保\n证合同成立。"
+        }
+      ],
+      "verification": {
+        "passed": true,
+        "citation_count": 5,
+        "reason": "answer_and_citations_present"
+      },
+      "trace": [
+        {
+          "node": "intent_analysis",
+          "method": "rule",
+          "domain": "civil"
+        },
+        {
+          "node": "task_planning",
+          "steps": [
+            "route_to_domain_tool",
+            "retrieve_legal_basis",
+            "generate_answer",
+            "verify_answer"
+          ]
+        },
+        {
+          "node": "tool_decision",
+          "tool": "search_civil_law"
+        },
+        {
+          "node": "tool_execution",
+          "tool": "search_civil_law",
+          "status": "success"
+        },
+        {
+          "node": "retrieval",
+          "documents": 5
+        },
+        {
+          "node": "generation",
+          "answer_length": 2078
+        },
+        {
+          "node": "verification",
+          "passed": true,
+          "citation_count": 5,
+          "reason": "answer_and_citations_present"
+        }
+      ],
+      "retry_count": 0,
+      "error": null,
+      "latency_ms": 34471.62
+    },
+    {
+      "id": "answer_citation-003",
+      "category": "answer_citation",
+      "question": "回答违法辞退问题时应引用哪些依据？",
+      "gold": [
+        "labor_termination_regulation"
+      ],
+      "prediction": "Thinking Process:\n\n1.  **Analyze the Request:**\n    *   Role: Legal Agent (法律 Agent).\n    *   Constraint: Can only answer based on the provided search evidence (检索证据). If evidence is insufficient, explicitly state that.\n    *   Question: What legal basis should be cited when answering the issue of illegal termination of employment (违法辞退)?\n    *   Input: Several excerpts from \"Labor Law and Related Laws\" (中华人民共和国劳动法及相关法律).\n\n2.  **Analyze the Provided Evidence:**\n    *   [Evidence 1]: Article 85 (Labor Administrative Departments' supervision and order to correct violations).\n    *   [Evidence 2]: Articles 104, 105, 106, 107 (Penalties for social insurance fund misappropriation, penalties for violating laws infringing rights, implementation steps, effective date).\n    *   [Evidence 3]: Article 25 (Conditions under which an employer *can* terminate a labor contract: probation failure, serious violation of discipline, serious negligence/misconduct causing major damage, criminal responsibility).\n    *   [Evidence 4]: Articles 100, 101, 102, 103 (Social insurance non-payment, obstruction of supervision, employee breach causing loss, abuse of power by officials).\n    *   [Evidence 5]: Article 98 (Employer terminates contract under conditions violating the law OR delays signing contract -> Labor Admin orders correction + compensation for damage).\n\n3.  **Evaluate the Question:**\n    *   The question asks about \"illegal termination\" (违法辞退).\n    *   I need to find specific articles in the provided evidence that define or address illegal termination and its consequences.\n\n4.  **Match Evidence to Question:**\n    *   **Article 25:** This lists conditions where an employer *can* terminate legally (e.g., serious violation, criminal responsibility). This implies that if these conditions are not met, termination might be illegal. However, it defines *legal* termination grounds.\n    *   **Article 98:** This explicitly states: \"用人单位违反本法规定的条件解除劳动合同...由劳动行政部门责令改正；对劳动者造成损害的，应当承担赔偿责任。\" (If an employer terminates a labor contract under conditions violating this Law... the labor administrative department shall order correction; if damage is caused to the worker, compensation shall be borne.) This",
+      "route_prediction": "labor",
+      "tool_prediction": {
+        "name": "search_labor_law",
+        "arguments": {
+          "query": "回答违法辞退问题时应引用哪些依据？",
+          "limit": 5
+        }
+      },
+      "retrieved": [
+        "中华人民共和国劳动法及相关法律 八十五 | labor_law.pdf p.17",
+        "中华人民共和国劳动法及相关法律  | labor_law.pdf p.21",
+        "中华人民共和国劳动法及相关法律 二十五 | labor_law.pdf p.6",
+        "中华人民共和国劳动法及相关法律 一百 | labor_law.pdf p.20",
+        "中华人民共和国劳动法及相关法律 九十八 | labor_law.pdf p.20"
+      ],
+      "citations": [
+        "中华人民共和国劳动法及相关法律 八十五 | labor_law.pdf p.17",
+        "中华人民共和国劳动法及相关法律  | labor_law.pdf p.21",
+        "中华人民共和国劳动法及相关法律 二十五 | labor_law.pdf p.6",
+        "中华人民共和国劳动法及相关法律 一百 | labor_law.pdf p.20",
+        "中华人民共和国劳动法及相关法律 九十八 | labor_law.pdf p.20"
+      ],
+      "citation_details": [
+        {
+          "reference": "中华人民共和国劳动法及相关法律 八十五 | labor_law.pdf p.17",
+          "content": "第八十五条\n县级以上各级人民政府劳动行政部门依法对\n用人单位遵守劳动法律、法规的情况进行监督检查，对违反劳动\n法律、法规的行为有权制止，并责令改正。"
+        },
+        {
+          "reference": "中华人民共和国劳动法及相关法律  | labor_law.pdf p.21",
+          "content": "—21—\n第一百零四条\n国家工作人员和社会保险基金经办机构的\n工作人员挪用社会保险基金，构成犯罪的，依法追究刑事责任。\n第一百零五条\n违反本法规定侵害劳动者合法权益，其他法\n律、行政法规已规定处罚的，依照该法律、行政法规的规定处罚。\n第十三章\n附则\n第一百零六条\n省、自治区、直辖市人民政府根据本法和本\n地区的实际情况，规定劳动合同制度的实施步骤，报国务院备案。\n第一百零七条\n本法自1995 年1 月1 日起施行。"
+        },
+        {
+          "reference": "中华人民共和国劳动法及相关法律 二十五 | labor_law.pdf p.6",
+          "content": "第二十五条\n劳动者有下列情形之一的，用人单位可以解除\n劳动合同：\n（一）在试用期间被证明不符合录用条件的；\n（二）严重违反劳动纪律或者用人单位规章制度的；\n（三）严重失职，营私舞弊，对用人单位利益造成重大损害\n的；\n（四）被依法追究刑事责任的。"
+        },
+        {
+          "reference": "中华人民共和国劳动法及相关法律 一百 | labor_law.pdf p.20",
+          "content": "第一百条\n用人单位无故不缴纳社会保险费的，由劳动行政\n部门责令其限期缴纳；逾期不缴的，可以加收滞纳金。\n第一百零一条\n用人单位无理阻挠劳动行政部门、有关部门\n及其工作人员行使监督检查权，打击报复举报人员的，由劳动行\n政部门或者有关部门处以罚款；构成犯罪的，对责任人员依法追\n究刑事责任。\n第一百零二条\n劳动者违反本法规定的条件解除劳动合同\n或者违反劳动合同中约定的保密事项，对用人单位造成经济损失\n的，应当依法承担赔偿责任。\n第一百零三条\n劳动行政部门或者有关部门的工作人员滥\n用职权、玩忽职守、徇私舞弊，构成犯罪的，依法追究刑事责任；\n不构成犯罪的，给予行政处分。"
+        },
+        {
+          "reference": "中华人民共和国劳动法及相关法律 九十八 | labor_law.pdf p.20",
+          "content": "第九十八条\n用人单位违反本法规定的条件解除劳动合同\n或者故意拖延不订立劳动合同的，由劳动行政部门责令改正；对\n劳动者造成损害的，应当承担赔偿责任。"
+        }
+      ],
+      "verification": {
+        "passed": true,
+        "citation_count": 5,
+        "reason": "answer_and_citations_present"
+      },
+      "trace": [
+        {
+          "node": "intent_analysis",
+          "method": "rule",
+          "domain": "labor"
+        },
+        {
+          "node": "task_planning",
+          "steps": [
+            "route_to_domain_tool",
+            "retrieve_legal_basis",
+            "generate_answer",
+            "verify_answer"
+          ]
+        },
+        {
+          "node": "tool_decision",
+          "tool": "search_labor_law"
+        },
+        {
+          "node": "tool_execution",
+          "tool": "search_labor_law",
+          "status": "success"
+        },
+        {
+          "node": "retrieval",
+          "documents": 5
+        },
+        {
+          "node": "generation",
+          "answer_length": 2208
+        },
+        {
+          "node": "verification",
+          "passed": true,
+          "citation_count": 5,
+          "reason": "answer_and_citations_present"
+        }
+      ],
+      "retry_count": 0,
+      "error": null,
+      "latency_ms": 33958.63
+    },
+    {
+      "id": "answer_citation-004",
+      "category": "answer_citation",
+      "question": "回答租赁合同违约问题时应引用哪些依据？",
+      "gold": [
+        "civil_lease_regulation"
+      ],
+      "prediction": "Thinking Process:\n\n1.  **Analyze the Request:**\n    *   Role: Legal Agent (法律 Agent).\n    *   Constraint: Can only answer based on the provided search evidence (检索证据). If evidence is insufficient, explicitly state that.\n    *   Question: What legal basis should be cited when answering questions about lease contract breaches (租赁合同违约问题)?\n    *   Provided Evidence: Four excerpts from the Civil Code of the People's Republic of China (中华人民共和国民法典), specifically Articles 736, 711, 743, 747, and 760. Note: The evidence labels say \"融资租赁合同\" (Financial Lease Contract) mostly, though the question asks about \"租赁合同\" (Lease Contract). I need to check if the provided evidence covers general lease contracts or specifically financial lease contracts.\n\n2.  **Analyze the Provided Evidence:**\n    *   [中华人民共和国民法典 七百三十六 | minfa.pdf p.144] Article 736: Discusses the *content* of a **Financial Lease Contract** (融资租赁合同).\n    *   [中华人民共和国民法典 七百一十一 | minfa.pdf p.139] Article 711: Discusses **Lessee's** failure to use the leased item according to agreement or nature, causing damage. The lessor can terminate and claim damages. This is under the section of **Financial Lease Contracts** (based on context of surrounding articles like 736, 743, 747, 760 which are all Chapter 15 Financial Lease Contracts in the Civil Code). *Correction*: In the Civil Code, Chapter 15 is Financial Lease Contracts. Article 711 is indeed in Chapter 15 (Financial Lease Contracts).\n    *   [中华人民共和国民法典 七百四十三 | minfa.pdf p.145] Article 743: Discusses **Lessee's** right to claim against the seller if the lessor knows of defects or fails to assist. This is under **Financial Lease Contracts**.\n    *   [中华人民共和国民法典 七百四十七 | minfa.pdf p.146] Article 747: Discusses **Lessee's** reliance on lessor's skill or lessor's intervention in selecting the leased item. This is under **Financial Lease Contracts**.\n    *   [中华人民共和国民法典 七百六十 | minfa.pdf p.1",
+      "route_prediction": "civil",
+      "tool_prediction": {
+        "name": "search_civil_law",
+        "arguments": {
+          "query": "回答租赁合同违约问题时应引用哪些依据？",
+          "limit": 5
+        }
+      },
+      "retrieved": [
+        "中华人民共和国民法典 七百三十六 | minfa.pdf p.144",
+        "中华人民共和国民法典 七百一十一 | minfa.pdf p.139",
+        "中华人民共和国民法典 七百四十三 | minfa.pdf p.145",
+        "中华人民共和国民法典 七百四十七 | minfa.pdf p.146",
+        "中华人民共和国民法典 七百六十 | minfa.pdf p.148"
+      ],
+      "citations": [
+        "中华人民共和国民法典 七百三十六 | minfa.pdf p.144",
+        "中华人民共和国民法典 七百一十一 | minfa.pdf p.139",
+        "中华人民共和国民法典 七百四十三 | minfa.pdf p.145",
+        "中华人民共和国民法典 七百四十七 | minfa.pdf p.146",
+        "中华人民共和国民法典 七百六十 | minfa.pdf p.148"
+      ],
+      "citation_details": [
+        {
+          "reference": "中华人民共和国民法典 七百三十六 | minfa.pdf p.144",
+          "content": "第七百三十六条\n融资租赁合同的内容一般包括租赁物的名称、数量、规\n格、技术性能、检验方法，租赁期限，租金构成及其支付期限和方式、币种，租\n赁期限届满租赁物的归属等条款。\n融资租赁合同应当采用书面形式。"
+        },
+        {
+          "reference": "中华人民共和国民法典 七百一十一 | minfa.pdf p.139",
+          "content": "第七百一十一条\n承租人未按照约定的方法或者未根据租赁物的性质使用租\n赁物，致使租赁物受到损失的，出租人可以解除合同并请求赔偿损失。"
+        },
+        {
+          "reference": "中华人民共和国民法典 七百四十三 | minfa.pdf p.145",
+          "content": "第七百四十三条\n出租人有下列情形之一，致使承租人对出卖人行使索赔权\n利失败的，承租人有权请求出租人承担相应的责任：\n（一）明知租赁物有质量瑕疵而不告知承租人；\n（二）承租人行使索赔权利时，未及时提供必要协助。\n出租人怠于行使只能由其对出卖人行使的索赔权利，造成承租人损失的，承\n租人有权请求出租人承担赔偿责任。"
+        },
+        {
+          "reference": "中华人民共和国民法典 七百四十七 | minfa.pdf p.146",
+          "content": "第七百四十七条\n租赁物不符合约定或者不符合使用目的的，出租人不承担\n责任。但是，承租人依赖出租人的技能确定租赁物或者出租人干预选择租赁物的\n除外。"
+        },
+        {
+          "reference": "中华人民共和国民法典 七百六十 | minfa.pdf p.148",
+          "content": "第七百六十条\n融资租赁合同无效，当事人就该情形下租赁物的归属有约定\n的，按照其约定；没有约定或者约定不明确的，租赁物应当返还出租人。但是，\n因承租人原因致使合同无效，出租人不请求返还或者返还后会显著降低租赁物效\n用的，租赁物的所有权归承租人，由承租人给予出租人合理补偿。\n第十六章\n保理合同"
+        }
+      ],
+      "verification": {
+        "passed": true,
+        "citation_count": 5,
+        "reason": "answer_and_citations_present"
+      },
+      "trace": [
+        {
+          "node": "intent_analysis",
+          "method": "rule",
+          "domain": "civil"
+        },
+        {
+          "node": "task_planning",
+          "steps": [
+            "route_to_domain_tool",
+            "retrieve_legal_basis",
+            "generate_answer",
+            "verify_answer"
+          ]
+        },
+        {
+          "node": "tool_decision",
+          "tool": "search_civil_law"
+        },
+        {
+          "node": "tool_execution",
+          "tool": "search_civil_law",
+          "status": "success"
+        },
+        {
+          "node": "retrieval",
+          "documents": 5
+        },
+        {
+          "node": "generation",
+          "answer_length": 1909
+        },
+        {
+          "node": "verification",
+          "passed": true,
+          "citation_count": 5,
+          "reason": "answer_and_citations_present"
+        }
+      ],
+      "retry_count": 0,
+      "error": null,
+      "latency_ms": 34401.0
+    },
+    {
+      "id": "answer_citation-005",
+      "category": "answer_citation",
+      "question": "回答拖欠工资问题时应引用哪些依据？",
+      "gold": [
+        "labor_wage_regulation"
+      ],
+      "prediction": "Thinking Process:\n\n1.  **Analyze the Request:**\n    *   Role: Legal Agent (法律 Agent).\n    *   Constraint: Can only answer based on the provided search evidence (检索证据). If evidence is insufficient, explicitly state that.\n    *   Question: What legal basis should be cited when answering questions about unpaid wages (拖欠工资问题)?\n    *   Input: Several excerpts from \"Labor Law and Related Laws\" (中华人民共和国劳动法及相关法律).\n\n2.  **Analyze the Provided Evidence:**\n    *   Evidence 1 (p.18): Article 91. States that if an employer withholds or unreasonably delays payment of wages (克扣或者无故拖欠劳动者工资的), the labor administrative department shall order payment of wages, economic compensation, and may order payment of compensation.\n    *   Evidence 2 (p.11): Article 50. States that wages shall be paid in currency form monthly to the laborer. Wages shall not be withheld or unreasonably delayed (不得克扣或者无故拖欠劳动者的工资).\n    *   Evidence 3 (p.21): Articles 104, 105, 106, 107. These relate to social insurance fund misappropriation, penalties for violating laws infringing on labor rights (general), implementation steps, and effective date. Not directly about unpaid wages.\n    *   Evidence 4 (p.18): Article 90. Relates to overtime work violations.\n    *   Evidence 5 (p.20): Articles 100, 101, 102, 103. Relate to social insurance non-payment, obstructing labor inspection, employee breach of contract, and administrative staff misconduct. Not directly about unpaid wages.\n\n3.  **Identify Relevant Articles for \"Unpaid Wages\" (拖欠工资):**\n    *   Article 50 explicitly prohibits withholding or unreasonably delaying wages (不得克扣或者无故拖欠劳动者的工资).\n    *   Article 91 explicitly addresses the penalty/consequence for withholding or unreasonably delaying wages (克扣或者无故拖欠劳动者工资的), requiring the labor administrative department to order payment and compensation.\n\n4.  **Synthesize the Answer:**\n    *   The user asks which legal basis should be cited when answering about unpaid wages.\n    *   Based *only* on the provided evidence",
+      "route_prediction": "labor",
+      "tool_prediction": {
+        "name": "search_labor_law",
+        "arguments": {
+          "query": "回答拖欠工资问题时应引用哪些依据？",
+          "limit": 5
+        }
+      },
+      "retrieved": [
+        "中华人民共和国劳动法及相关法律 九十一 | labor_law.pdf p.18",
+        "中华人民共和国劳动法及相关法律 五十 | labor_law.pdf p.11",
+        "中华人民共和国劳动法及相关法律  | labor_law.pdf p.21",
+        "中华人民共和国劳动法及相关法律 九十 | labor_law.pdf p.18",
+        "中华人民共和国劳动法及相关法律 一百 | labor_law.pdf p.20"
+      ],
+      "citations": [
+        "中华人民共和国劳动法及相关法律 九十一 | labor_law.pdf p.18",
+        "中华人民共和国劳动法及相关法律 五十 | labor_law.pdf p.11",
+        "中华人民共和国劳动法及相关法律  | labor_law.pdf p.21",
+        "中华人民共和国劳动法及相关法律 九十 | labor_law.pdf p.18",
+        "中华人民共和国劳动法及相关法律 一百 | labor_law.pdf p.20"
+      ],
+      "citation_details": [
+        {
+          "reference": "中华人民共和国劳动法及相关法律 九十一 | labor_law.pdf p.18",
+          "content": "第九十一条\n用人单位有下列侵害劳动者合法权益情形之\n一的，由劳动行政部门责令支付劳动者的工资报酬、经济补偿，\n并可以责令支付赔偿金：\n（一）克扣或者无故拖欠劳动者工资的；"
+        },
+        {
+          "reference": "中华人民共和国劳动法及相关法律 五十 | labor_law.pdf p.11",
+          "content": "第五十条\n工资应当以货币形式按月支付给劳动者本人。不\n得克扣或者无故拖欠劳动者的工资。"
+        },
+        {
+          "reference": "中华人民共和国劳动法及相关法律  | labor_law.pdf p.21",
+          "content": "—21—\n第一百零四条\n国家工作人员和社会保险基金经办机构的\n工作人员挪用社会保险基金，构成犯罪的，依法追究刑事责任。\n第一百零五条\n违反本法规定侵害劳动者合法权益，其他法\n律、行政法规已规定处罚的，依照该法律、行政法规的规定处罚。\n第十三章\n附则\n第一百零六条\n省、自治区、直辖市人民政府根据本法和本\n地区的实际情况，规定劳动合同制度的实施步骤，报国务院备案。\n第一百零七条\n本法自1995 年1 月1 日起施行。"
+        },
+        {
+          "reference": "中华人民共和国劳动法及相关法律 九十 | labor_law.pdf p.18",
+          "content": "第九十条\n用人单位违反本法规定，延长劳动者工作时间的，\n由劳动行政部门给予警告，责令改正，并可以处以罚款。"
+        },
+        {
+          "reference": "中华人民共和国劳动法及相关法律 一百 | labor_law.pdf p.20",
+          "content": "第一百条\n用人单位无故不缴纳社会保险费的，由劳动行政\n部门责令其限期缴纳；逾期不缴的，可以加收滞纳金。\n第一百零一条\n用人单位无理阻挠劳动行政部门、有关部门\n及其工作人员行使监督检查权，打击报复举报人员的，由劳动行\n政部门或者有关部门处以罚款；构成犯罪的，对责任人员依法追\n究刑事责任。\n第一百零二条\n劳动者违反本法规定的条件解除劳动合同\n或者违反劳动合同中约定的保密事项，对用人单位造成经济损失\n的，应当依法承担赔偿责任。\n第一百零三条\n劳动行政部门或者有关部门的工作人员滥\n用职权、玩忽职守、徇私舞弊，构成犯罪的，依法追究刑事责任；\n不构成犯罪的，给予行政处分。"
+        }
+      ],
+      "verification": {
+        "passed": true,
+        "citation_count": 5,
+        "reason": "answer_and_citations_present"
+      },
+      "trace": [
+        {
+          "node": "intent_analysis",
+          "method": "rule",
+          "domain": "labor"
+        },
+        {
+          "node": "task_planning",
+          "steps": [
+            "route_to_domain_tool",
+            "retrieve_legal_basis",
+            "generate_answer",
+            "verify_answer"
+          ]
+        },
+        {
+          "node": "tool_decision",
+          "tool": "search_labor_law"
+        },
+        {
+          "node": "tool_execution",
+          "tool": "search_labor_law",
+          "status": "success"
+        },
+        {
+          "node": "retrieval",
+          "documents": 5
+        },
+        {
+          "node": "generation",
+          "answer_length": 1995
+        },
+        {
+          "node": "verification",
+          "passed": true,
+          "citation_count": 5,
+          "reason": "answer_and_citations_present"
+        }
+      ],
+      "retry_count": 0,
+      "error": null,
+      "latency_ms": 34438.41
+    },
+    {
+      "id": "answer_citation-006",
+      "category": "answer_citation",
+      "question": "回答买卖合同违约问题时应引用哪些依据？",
+      "gold": [
+        "civil_contract_regulation"
+      ],
+      "prediction": "Thinking Process:\n\n1.  **Analyze the Request:**\n    *   Role: Legal Agent.\n    *   Constraint: Can only answer based on the provided search evidence. If evidence is insufficient, explicitly state that.\n    *   Question: What legal basis should be cited when answering questions about breach of contract in sales contracts? (回答买卖合同违约问题时应引用哪些依据？)\n    *   Provided Evidence: A list of specific articles from the Civil Code of the People's Republic of China (minfa.pdf).\n\n2.  **Analyze the Provided Evidence:**\n    *   [中华人民共和国民法典 五百九十六 | minfa.pdf p.119] Article 596: Content of sales contracts (items, quantity, quality, price, etc.).\n    *   [中华人民共和国民法典 四百七十 | minfa.pdf p.93] Article 470: General contract content (parties, subject matter, quantity, quality, price, performance, breach of contract, dispute resolution).\n    *   [中华人民共和国民法典 九百三十八 | minfa.pdf p.181] Article 938: Property management contract content. (Irrelevant to sales contracts).\n    *   [中华人民共和国民法典 五百九十九 | minfa.pdf p.120] Article 599: Delivery of documents/data by seller.\n    *   [中华人民共和国民法典 六百四十七 | minfa.pdf p.128] Article 647: Barter transactions refer to sales contract provisions. (Irrelevant to general sales contract breach).\n    *   [第十章 供用电、水、气、热力合同] (Chapter 10 title): Utility contracts. (Irrelevant to general sales contract breach).\n\n3.  **Evaluate the Question:**\n    *   The question asks about \"breach of contract in sales contracts\" (买卖合同违约).\n    *   I need to identify which provided articles relate to *breach of contract* (违约责任) specifically within the context of *sales contracts* (买卖合同).\n\n4.  **Match Evidence to Question:**\n    *   Article 596: Defines content of sales contracts. Not directly about breach, but defines the contract terms which form the basis of breach.\n    *   Article 470: General contract content. Includes \"Breach of Contract\" (违约责任) as item (7). This is a general provision for all contracts,",
+      "route_prediction": "civil",
+      "tool_prediction": {
+        "name": "search_civil_law",
+        "arguments": {
+          "query": "回答买卖合同违约问题时应引用哪些依据？",
+          "limit": 5
+        }
+      },
+      "retrieved": [
+        "中华人民共和国民法典 五百九十六 | minfa.pdf p.119",
+        "中华人民共和国民法典 四百七十 | minfa.pdf p.93",
+        "中华人民共和国民法典 九百三十八 | minfa.pdf p.181",
+        "中华人民共和国民法典 五百九十九 | minfa.pdf p.120",
+        "中华人民共和国民法典 六百四十七 | minfa.pdf p.128"
+      ],
+      "citations": [
+        "中华人民共和国民法典 五百九十六 | minfa.pdf p.119",
+        "中华人民共和国民法典 四百七十 | minfa.pdf p.93",
+        "中华人民共和国民法典 九百三十八 | minfa.pdf p.181",
+        "中华人民共和国民法典 五百九十九 | minfa.pdf p.120",
+        "中华人民共和国民法典 六百四十七 | minfa.pdf p.128"
+      ],
+      "citation_details": [
+        {
+          "reference": "中华人民共和国民法典 五百九十六 | minfa.pdf p.119",
+          "content": "第五百九十六条\n买卖合同的内容一般包括标的物的名称、数量、质量、价\n款、履行期限、履行地点和方式、包装方式、检验标准和方法、结算方式、合同\n使用的文字及其效力等条款。"
+        },
+        {
+          "reference": "中华人民共和国民法典 四百七十 | minfa.pdf p.93",
+          "content": "第四百七十条\n合同的内容由当事人约定，一般包括下列条款：\n（一）当事人的姓名或者名称和住所；\n（二）标的；\n（三）数量；\n（四）质量；\n（五）价款或者报酬；\n（六）履行期限、地点和方式；\n（七）违约责任；\n（八）解决争议的方法。\n当事人可以参照各类合同的示范文本订立合同。"
+        },
+        {
+          "reference": "中华人民共和国民法典 九百三十八 | minfa.pdf p.181",
+          "content": "第九百三十八条\n物业服务合同的内容一般包括服务事项、服务质量、服务\n费用的标准和收取办法、维修资金的使用、服务用房的管理和使用、服务期限、\n服务交接等条款。\n物业服务人公开作出的有利于业主的服务承诺，为物业服务合同的组成部\n分。\n物业服务合同应当采用书面形式。"
+        },
+        {
+          "reference": "中华人民共和国民法典 五百九十九 | minfa.pdf p.120",
+          "content": "第五百九十九条\n出卖人应当按照约定或者交易习惯向买受人交付提取标的\n物单证以外的有关单证和资料。"
+        },
+        {
+          "reference": "中华人民共和国民法典 六百四十七 | minfa.pdf p.128",
+          "content": "第六百四十七条\n当事人约定易货交易，转移标的物的所有权的，参照适用\n买卖合同的有关规定。\n第十章\n供用电、水、气、热力合同"
+        }
+      ],
+      "verification": {
+        "passed": true,
+        "citation_count": 5,
+        "reason": "answer_and_citations_present"
+      },
+      "trace": [
+        {
+          "node": "intent_analysis",
+          "method": "rule",
+          "domain": "civil"
+        },
+        {
+          "node": "task_planning",
+          "steps": [
+            "route_to_domain_tool",
+            "retrieve_legal_basis",
+            "generate_answer",
+            "verify_answer"
+          ]
+        },
+        {
+          "node": "tool_decision",
+          "tool": "search_civil_law"
+        },
+        {
+          "node": "tool_execution",
+          "tool": "search_civil_law",
+          "status": "success"
+        },
+        {
+          "node": "retrieval",
+          "documents": 5
+        },
+        {
+          "node": "generation",
+          "answer_length": 1910
+        },
+        {
+          "node": "verification",
+          "passed": true,
+          "citation_count": 5,
+          "reason": "answer_and_citations_present"
+        }
+      ],
+      "retry_count": 0,
+      "error": null,
+      "latency_ms": 33878.57
+    }
+  ]
+}
