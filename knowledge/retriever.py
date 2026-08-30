@@ -132,6 +132,47 @@ class LegalRetriever:
     def _distance_metric(self) -> str:
         return str(self._collection_metadata().get("hnsw:space", "cosine"))
 
+    def _search_once(
+        self,
+        query: str,
+        *,
+        candidate_k: int,
+        filters: dict[str, Any],
+    ) -> list[RetrievedChunk]:
+        raw = self.vectorstore.similarity_search_with_score(query, k=candidate_k, filter=filters)
+        metric = self._distance_metric()
+        return [
+            RetrievedChunk(
+                document.page_content,
+                document.metadata,
+                _distance_to_score(float(distance), metric),
+                float(distance),
+            )
+            for document, distance in raw
+        ]
+
+    @staticmethod
+    def _merge_query_variants(*variant_results: list[RetrievedChunk]) -> list[RetrievedChunk]:
+        """Union original and rewritten candidates; never discard original hits.
+
+        The same article/chunk can be returned by multiple query variants. We keep
+        the strongest embedding score and the corresponding distance so rewrite is
+        additive rather than replacing the user's original semantic signal.
+        """
+        merged: dict[str, RetrievedChunk] = {}
+        for results in variant_results:
+            for item in results:
+                key = str(item.metadata.get("chunk_id") or (
+                    item.metadata.get("law_name", ""),
+                    item.metadata.get("article", ""),
+                    item.metadata.get("source", ""),
+                    item.content,
+                ))
+                existing = merged.get(key)
+                if existing is None or item.score > existing.score:
+                    merged[key] = item
+        return sorted(merged.values(), key=lambda item: item.score, reverse=True)
+
     def search(
         self,
         query: str,
@@ -149,7 +190,6 @@ class LegalRetriever:
         if top_k < 1:
             raise ValueError("top_k 必须 >= 1")
 
-        search_query = rewrite_legal_query(query, self.domain) if rewrite else query
         candidate_k = max(candidate_k or top_k * settings.retrieval_candidate_multiplier, top_k)
         filters: dict[str, Any] = {"domain": self.domain}
         if law_name:
@@ -157,12 +197,17 @@ class LegalRetriever:
         if article:
             filters["article"] = article
 
-        raw = self.vectorstore.similarity_search_with_score(search_query, k=candidate_k, filter=filters)
-        metric = self._distance_metric()
-        results = [
-            RetrievedChunk(document.page_content, document.metadata, _distance_to_score(float(distance), metric), float(distance))
-            for document, distance in raw
-        ]
+        original_results = self._search_once(query, candidate_k=candidate_k, filters=filters)
+        results = original_results
+        if rewrite:
+            rewritten_query = rewrite_legal_query(query, self.domain)
+            if rewritten_query != query:
+                rewritten_results = self._search_once(
+                    rewritten_query,
+                    candidate_k=candidate_k,
+                    filters=filters,
+                )
+                results = self._merge_query_variants(original_results, rewritten_results)
 
         if hybrid and len(results) > 1:
             semantic_max = max(item.score for item in results)
@@ -171,7 +216,7 @@ class LegalRetriever:
             ranked: list[RetrievedChunk] = []
             for item in results:
                 semantic_rank = (item.score - semantic_min) / span if span > 1e-12 else 0.0
-                lexical = _lexical_overlap(search_query, item.content)
+                lexical = _lexical_overlap(query, item.content)
                 ranked.append(RetrievedChunk(
                     item.content,
                     {**item.metadata, "lexical_score": lexical},
@@ -182,7 +227,7 @@ class LegalRetriever:
             results = sorted(ranked, key=lambda item: float(item.rerank_score or 0.0), reverse=True)
 
         if rerank and len(results) > 1:
-            results = self._rerank(search_query, results)
+            results = self._rerank(query, results)
         return results[:top_k]
 
     @staticmethod
