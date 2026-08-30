@@ -22,12 +22,18 @@ from .state import AgentState
 from .tool_executor import DirectToolExecutor
 
 
-def build_legal_agent_graph(*, tool_service=None, tool_executor=None, answer_generator: Callable | None = None):
-    """Build and compile the Phase 4 Legal Agent graph.
+def build_legal_agent_graph(
+    *,
+    tool_service=None,
+    tool_executor=None,
+    answer_generator: Callable | None = None,
+    decision_generator: Callable | None = None,
+):
+    """Build the legal Agent graph with injectable decision and answer models.
 
-    ``tool_executor`` is the preferred injection point. For compatibility with
-    Phase 2/3, ``tool_service`` is wrapped by ``DirectToolExecutor``. Phase 4
-    also provides ``MCPToolExecutor`` for real MCP integration tests.
+    ``decision_generator`` is intentionally optional. Existing Phase 2-4 callers
+    therefore keep deterministic routing/tool behavior, while Phase 5 can inject
+    the Decision LoRA and measure whether its action is actually consumed.
     """
     if tool_executor is None:
         tool_executor = DirectToolExecutor(tool_service)
@@ -35,7 +41,7 @@ def build_legal_agent_graph(*, tool_service=None, tool_executor=None, answer_gen
     graph = StateGraph(AgentState)
     graph.add_node("intent_analysis", intent_analysis)
     graph.add_node("task_planning", task_planning)
-    graph.add_node("tool_decision", tool_decision)
+    graph.add_node("tool_decision", lambda state: tool_decision(state, decision_generator))
     graph.add_node("tool_execution", lambda state: tool_execution(state, tool_executor))
     graph.add_node("retrieval", retrieval)
     graph.add_node("generation", lambda state: generation(state, answer_generator))
