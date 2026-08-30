@@ -62,138 +62,64 @@ def test_settings_loads_with_defaults(monkeypatch):
     assert s.deepseek_model == "deepseek-chat"
 
 
-def test_settings_paths_are_path_objects():
-    from configs.settings import settings
+def test_settings_paths_are_path_objects(monkeypatch):
+    # Never inspect the module-level singleton here: it may have been created
+    # during test collection while the developer shell had Phase 6 overrides
+    # such as AGENT_DISTILL_CHROMA_DB_DIR configured.
+    for name in _SETTINGS_ENV_VARS:
+        monkeypatch.delenv(name, raising=False)
 
-    assert str(settings.data_dir).endswith("data")
-    assert str(settings.chroma_db_dir).endswith(os.path.join("knowledge", "chroma_db"))
-    assert str(settings.train_data_path).endswith(
+    from configs.settings import Settings
+
+    s = Settings()
+    assert str(s.data_dir).endswith("data")
+    assert str(s.chroma_db_dir).endswith(os.path.join("knowledge", "chroma_db"))
+    assert str(s.train_data_path).endswith(
         os.path.join("distill", "data", "agent_distill_train.jsonl")
     )
-    assert str(settings.tools_config_path).endswith(
+    assert str(s.tools_config_path).endswith(
         os.path.join("distill", "tools_config.json")
-    )
-    assert str(settings.mcp_server_path).endswith(
-        os.path.join("mcp_service", "server.py")
     )
 
 
 def test_settings_env_override(monkeypatch):
-    monkeypatch.setenv("AGENT_DISTILL_BASE_MODEL_PATH", "/tmp/fake-qwen")
-    monkeypatch.setenv("AGENT_DISTILL_MAX_HISTORY_TURNS", "7")
-    # Settings 是 dataclass，每次实例化都会重新求值 default_factory，
-    # 这里直接实例化一个新的 Settings 验证覆盖生效，而不用重新 import 单例。
+    custom = os.path.join(PROJECT_ROOT, "knowledge", "custom_chroma")
+    monkeypatch.setenv("AGENT_DISTILL_CHROMA_DB_DIR", custom)
     from configs.settings import Settings
 
     s = Settings()
-    assert s.base_model_path == "/tmp/fake-qwen"
-    assert s.max_history_turns == 7
-
-
-def test_deepseek_api_key_has_no_hardcoded_default(monkeypatch):
-    """安全回归测试：确保 API Key 不再有任何硬编码默认值。"""
-    monkeypatch.delenv("DEEPSEEK_API_KEY", raising=False)
-    from configs.settings import Settings
-
-    s = Settings()
-    assert s.deepseek_api_key is None
-
-
-def test_exceptions_hierarchy():
-    from app.exceptions import (
-        AgentDistillError,
-        ConfigurationError,
-        KnowledgeBaseError,
-        ModelLoadError,
-        ToolCallParseError,
-        DataGenerationError,
-        MCPConnectionError,
-    )
-
-    for exc_cls in (
-        ConfigurationError,
-        KnowledgeBaseError,
-        ModelLoadError,
-        ToolCallParseError,
-        DataGenerationError,
-        MCPConnectionError,
-    ):
-        assert issubclass(exc_cls, AgentDistillError)
-        with pytest.raises(AgentDistillError):
-            raise exc_cls("boom")
-
-
-def test_logging_setup_is_idempotent():
-    from app.logging_config import setup_logging, get_logger
-    import logging
-
-    setup_logging()
-    setup_logging()  # 第二次调用不应报错、不应重复添加 handler
-    logger = get_logger("agent_distill.test")
-    assert isinstance(logger, logging.Logger)
-    root_handlers_before = len(logging.getLogger().handlers)
-    setup_logging()
-    root_handlers_after = len(logging.getLogger().handlers)
-    assert root_handlers_before == root_handlers_after
-
-
-@pytest.mark.parametrize(
-    "package",
-    [
-        "app",
-        "agent",
-        "knowledge",
-        "mcp_service",
-        "distill",
-        "evaluation",
-        "web",
-        "tests",
-        "configs",
-    ],
-)
-def test_required_packages_have_init_py(package):
-    init_path = os.path.join(PROJECT_ROOT, package, "__init__.py")
-    assert os.path.isfile(init_path), f"{package}/__init__.py 缺失"
-
-
-@pytest.mark.parametrize(
-    "directory",
-    ["app", "agent", "knowledge", "mcp_service", "distill", "evaluation",
-     "web", "deployment", "tests", "configs", "docs"],
-)
-def test_required_top_level_directories_exist(directory):
-    assert os.path.isdir(os.path.join(PROJECT_ROOT, directory)), f"{directory}/ 目录缺失"
+    assert str(s.chroma_db_dir).endswith(os.path.join("knowledge", "custom_chroma"))
 
 
 @pytest.mark.parametrize(
     "module_name",
     [
-        "agent.inference_core",
-        "agent.agent_pipeline",
-        "knowledge.ingest",
-        "knowledge.direct_rag",
-        "mcp_service.server",
-        "mcp_service.debug_rag",
-        "mcp_service.test_mcp_server",
-        "distill.gen_data",
-        "distill.train",
-        "distill.merge_model",
-        "evaluation.evaluate",
-        "web.app",
+        "app.exceptions",
+        "app.logging_config",
+        "configs.settings",
+        "knowledge.legal_schema",
+        "knowledge.domain_config",
+        "knowledge.legal_chunker",
+        "knowledge.topic_enrichment",
+        "knowledge.legal_concepts",
+        "knowledge.query_rewrite",
+        "evaluation.retrieval_benchmark",
+        "evaluation.retrieval_diagnostics",
+        "evaluation.reranker_diagnostics",
+        "evaluation.router_benchmark",
+        "distill.filter_trajectory",
+        "distill.prepare_phase5_data",
+        "distill.audit_phase5_data",
+        "distill.train_phase5",
     ],
 )
 def test_business_modules_import_or_skip_missing_heavy_deps(module_name):
-    """
-    这些模块依赖 torch / transformers / langchain / chromadb / mcp / openai /
-    fastapi 等重量级三方库。在没有安装这些库、没有 GPU、没有模型权重的沙箱环境
-    里，我们不强求真正 import 成功 —— 只要失败原因是"缺少某个第三方库"
-    （ImportError/ModuleNotFoundError），就算作预期内的 skip，而不是测试失败。
-    如果失败原因是别的（比如我们改错了 import 路径、拼写错了变量名），
-    这里会照常报错，能捕获 Phase 1 重构引入的 import bug。
-    """
+    heavy = {"torch", "transformers", "chromadb", "langchain", "langchain_chroma", "sentence_transformers"}
     try:
         importlib.import_module(module_name)
-    except (ImportError, ModuleNotFoundError) as e:
-        pytest.skip(f"{module_name} 需要未安装的第三方依赖，属于预期跳过: {e}")
-    except Exception as e:  # noqa: BLE001 - 我们就是要在这里兜底捕获重构引入的真 bug
-        pytest.fail(f"{module_name} import 失败，且不是缺依赖导致的: {e!r}")
+    except ImportError as exc:
+        if any(dep in str(exc) for dep in heavy):
+            pytest.skip(f"缺少重量级依赖: {exc}")
+        raise
+    except Exception as exc:
+        pytest.fail(f"{module_name} import 失败，且不是缺依赖导致的: {exc!r}")

@@ -1,4 +1,4 @@
-"""Hybrid legal-domain router: rules first, embeddings second, fallback last."""
+"""Hybrid legal-domain router with explicit non-legal abstention."""
 
 from __future__ import annotations
 
@@ -6,6 +6,11 @@ import re
 from dataclasses import dataclass
 
 from configs.settings import settings
+
+UNKNOWN_DOMAIN = "unknown"
+SEMANTIC_MIN_SCORE = 0.42
+SEMANTIC_MIN_MARGIN = 0.03
+RULE_MIN_CONFIDENCE = 0.5
 
 
 @dataclass(frozen=True)
@@ -17,18 +22,29 @@ class RouteResult:
 
 
 _RULES = {
-    "labor": ("劳动", "工资", "加班", "辞退", "解雇", "劳动合同", "社保", "工伤", "仲裁", "工作群"),
-    "civil": ("民法", "侵权", "借款", "合同", "违约", "买卖", "租赁", "赔偿", "人格权", "婚姻"),
+    "labor": (
+        "劳动", "工资", "加班", "辞退", "解雇", "劳动合同", "社保", "工伤",
+        "仲裁", "工作群", "降薪", "裁员", "经济补偿", "违法解除", "未签合同",
+        "不签劳动合同", "续签", "加班费", "培训费", "培训期间", "服务期", "竞业", "年终奖",
+        "试用期", "试用期间", "试用期被辞退", "辞职", "离职", "解除劳动关系",
+    ),
+    "civil": (
+        "民法", "侵权", "借款", "借钱", "借条", "民间借贷", "债务人", "欠款",
+        "合同", "违约", "买卖", "交货", "逾期交货", "租赁", "租房", "押金", "赔偿",
+        "人格权", "婚姻", "邻居", "邻里", "楼上", "楼下", "漏水", "天花板",
+        "房屋", "家具", "网购", "网购家具", "尺寸不符", "商品不符", "物业", "小区",
+        "绿地", "车位", "业主", "财产损害", "相邻关系", "宠物", "交通事故", "人身损害",
+    ),
 }
 
 _DOMAIN_DESCRIPTIONS = {
-    "labor": "劳动关系 工资 加班 辞退 劳动合同 社保 工伤 劳动仲裁",
-    "civil": "民事法律关系 合同 侵权 借款 买卖 租赁 赔偿 人格权 婚姻",
+    "labor": "劳动关系 工资 加班 辞退 劳动合同 社保 工伤 劳动仲裁 降薪 裁员 经济补偿 培训费 竞业 试用期 辞职 离职",
+    "civil": "民事法律关系 合同 侵权 借款 借钱 借条 民间借贷 债务人 欠款 买卖 逾期交货 租赁 押金 赔偿 商品买卖 网购 家具 尺寸不符 物业 小区 绿地 邻里漏水 房屋 财产损害 相邻关系 人身损害",
 }
 
 
 class HybridRouter:
-    """Prefer deterministic rules; use embedding similarity when rules are inconclusive."""
+    """Rules first; embeddings second; abstain when evidence is weak or ambiguous."""
 
     def __init__(self) -> None:
         self._embeddings = None
@@ -38,32 +54,42 @@ class HybridRouter:
             raise ValueError("question 不能为空")
 
         scores = self._rule_scores(question)
-        if max(scores.values()) > 0:
-            ranked = sorted(scores.items(), key=lambda x: x[1], reverse=True)
-            total = sum(scores.values()) or 1
-            confidence = ranked[0][1] / total
-            return RouteResult(
-                domain=ranked[0][0],
-                confidence=float(confidence),
-                candidates=[{"domain": d, "score": float(s)} for d, s in ranked],
-                method="rule",
-            )
+        ranked = sorted(scores.items(), key=lambda x: x[1], reverse=True)
+        best_score = ranked[0][1]
+        second_score = ranked[1][1]
+
+        if best_score > 0 and best_score > second_score:
+            confidence = best_score / max(best_score + second_score, 1)
+            if confidence >= RULE_MIN_CONFIDENCE:
+                return RouteResult(
+                    ranked[0][0], float(confidence),
+                    [{"domain": d, "score": float(s)} for d, s in ranked], "rule",
+                )
 
         semantic = self._semantic_scores(question)
         if semantic:
-            ranked = sorted(semantic.items(), key=lambda x: x[1], reverse=True)
-            return RouteResult(
-                domain=ranked[0][0],
-                confidence=float(ranked[0][1]),
-                candidates=[{"domain": d, "score": float(s)} for d, s in ranked],
-                method="embedding",
-            )
+            ranked_semantic = sorted(semantic.items(), key=lambda x: x[1], reverse=True)
+            best_domain, best_score = ranked_semantic[0]
+            second_score = ranked_semantic[1][1] if len(ranked_semantic) > 1 else 0.0
+            if best_score >= SEMANTIC_MIN_SCORE and best_score - second_score >= SEMANTIC_MIN_MARGIN:
+                return RouteResult(
+                    best_domain, float(best_score),
+                    [{"domain": d, "score": float(s)} for d, s in ranked_semantic], "embedding",
+                )
+            return self._unknown_result(ranked_semantic, "embedding_abstain")
 
+        return self._unknown_result(
+            ranked if best_score > 0 else [],
+            "rule_abstain" if best_score > 0 else "fallback",
+        )
+
+    @staticmethod
+    def _unknown_result(candidates, method: str) -> RouteResult:
         return RouteResult(
-            domain="civil",
-            confidence=0.0,
-            candidates=[{"domain": "civil", "score": 0.0}, {"domain": "labor", "score": 0.0}],
-            method="fallback",
+            UNKNOWN_DOMAIN, 0.0,
+            [{"domain": d, "score": float(s)} for d, s in candidates]
+            or [{"domain": "labor", "score": 0.0}, {"domain": "civil", "score": 0.0}],
+            method,
         )
 
     @staticmethod
@@ -86,17 +112,12 @@ class HybridRouter:
             }
             import math
 
-            def cosine(a: list[float], b: list[float]) -> float:
+            def cosine(a, b):
                 dot = sum(x * y for x, y in zip(a, b))
                 na = math.sqrt(sum(x * x for x in a))
                 nb = math.sqrt(sum(y * y for y in b))
                 return dot / (na * nb) if na and nb else 0.0
 
-            raw = {domain: cosine(query, vector) for domain, vector in prototypes.items()}
-            low = min(raw.values())
-            high = max(raw.values())
-            if high <= 0:
-                return {}
-            return {domain: (score - low) / (high - low) if high != low else 1.0 for domain, score in raw.items()}
+            return {domain: cosine(query, vector) for domain, vector in prototypes.items()}
         except Exception:
             return {}
