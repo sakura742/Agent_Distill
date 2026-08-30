@@ -1,8 +1,5 @@
 # -*- coding: utf-8 -*-
-"""法律条款感知分块。
-
-关键约束：同一法条可能跨页，不能逐页切分后丢失后半条款。
-"""
+"""法律条款感知分块，并为检索索引加入可审计的法律概念别名。"""
 
 from __future__ import annotations
 
@@ -11,6 +8,7 @@ from pathlib import Path
 
 from langchain_core.documents import Document
 
+from knowledge.legal_concepts import article_concepts
 from knowledge.legal_schema import LegalChunk
 from knowledge.topic_enrichment import enriched_retrieval_text
 
@@ -39,15 +37,7 @@ def _chapter_for(position: int, chapters: list[tuple[int, str]]) -> str | None:
     return current
 
 
-def split_legal_text(
-    text: str,
-    *,
-    domain: str,
-    law_name: str,
-    source: str,
-    page: int | None = None,
-    max_chars: int = 1200,
-) -> list[LegalChunk]:
+def split_legal_text(text: str, *, domain: str, law_name: str, source: str, page: int | None = None, max_chars: int = 1200) -> list[LegalChunk]:
     """Split a complete corpus text by article boundaries."""
     text = _clean(text)
     if not text:
@@ -73,21 +63,11 @@ def split_legal_text(
             pieces = [article_text[i : i + max_chars] for i in range(0, len(article_text), max_chars)]
         for piece_index, piece in enumerate(pieces):
             chunk_id = f"{Path(source).stem}:{page or 0}:{article or article_index}:{piece_index}"
-            chunks.append(LegalChunk(
-                text=piece, domain=domain, law_name=law_name, source=source,
-                article=article, chapter=chapter, page=page, chunk_id=chunk_id,
-            ))
+            chunks.append(LegalChunk(text=piece, domain=domain, law_name=law_name, source=source, article=article, chapter=chapter, page=page, chunk_id=chunk_id))
     return chunks
 
 
-def split_legal_text_with_pages(
-    pages: list[str],
-    *,
-    domain: str,
-    law_name: str,
-    source: str,
-    max_chars: int = 1200,
-) -> list[LegalChunk]:
+def split_legal_text_with_pages(pages: list[str], *, domain: str, law_name: str, source: str, max_chars: int = 1200) -> list[LegalChunk]:
     """Split an entire PDF at article boundaries while preserving start page."""
     cleaned_pages = [_clean(page) for page in pages]
     combined = "\n\n".join(page for page in cleaned_pages if page)
@@ -96,7 +76,7 @@ def split_legal_text_with_pages(
 
     page_offsets: list[tuple[int, int]] = []
     cursor = 0
-    for page_number, page in enumerate(cleaned_pages, 1):
+    for page in cleaned_pages:
         start = cursor
         end = start + len(page)
         page_offsets.append((start, end))
@@ -127,34 +107,28 @@ def split_legal_text_with_pages(
             pieces = [article_text[i : i + max_chars] for i in range(0, len(article_text), max_chars)]
         for piece_index, piece in enumerate(pieces):
             chunk_id = f"{Path(source).stem}:{start_page or 0}:{article or article_index}:{piece_index}"
-            chunks.append(LegalChunk(
-                text=piece, domain=domain, law_name=law_name, source=source,
-                article=article, chapter=chapter, page=start_page, chunk_id=chunk_id,
-            ))
+            chunks.append(LegalChunk(text=piece, domain=domain, law_name=law_name, source=source, article=article, chapter=chapter, page=start_page, chunk_id=chunk_id))
     return chunks
+
+
+def _document_for_chunk(chunk: LegalChunk) -> Document:
+    retrieval_text = enriched_retrieval_text(law_name=chunk.law_name, article=chunk.article, chapter=chunk.chapter, text=chunk.text)
+    concepts = article_concepts(chunk.domain, chunk.article)
+    if concepts:
+        retrieval_text += "\n法律概念：" + " ".join(concepts)
+    metadata = chunk.to_metadata()
+    if concepts:
+        metadata["legal_concepts"] = list(concepts)
+    metadata["original_text"] = chunk.text
+    metadata["retrieval_enriched"] = bool(concepts) or bool(chunk.chapter)
+    return Document(page_content=retrieval_text, metadata=metadata)
 
 
 def documents_from_pdf_page(text: str, *, domain: str, law_name: str, source: str, page: int) -> list[Document]:
     chunks = split_legal_text(text, domain=domain, law_name=law_name, source=source, page=page)
-    return [
-        Document(
-            page_content=enriched_retrieval_text(
-                law_name=c.law_name, article=c.article, chapter=c.chapter, text=c.text
-            ),
-            metadata=c.to_metadata(),
-        )
-        for c in chunks
-    ]
+    return [_document_for_chunk(c) for c in chunks]
 
 
 def documents_from_pdf_pages(pages: list[str], *, domain: str, law_name: str, source: str) -> list[Document]:
     chunks = split_legal_text_with_pages(pages, domain=domain, law_name=law_name, source=source)
-    return [
-        Document(
-            page_content=enriched_retrieval_text(
-                law_name=c.law_name, article=c.article, chapter=c.chapter, text=c.text
-            ),
-            metadata=c.to_metadata(),
-        )
-        for c in chunks
-    ]
+    return [_document_for_chunk(c) for c in chunks]
