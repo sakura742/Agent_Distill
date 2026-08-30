@@ -2,67 +2,69 @@
 
 ## 结论
 
-`agent_trajectory.jsonl` 暴露的核心问题不是单一字段错误，而是检索→筛选→引用→验证链路缺少明确边界。当前已在 `fix/phase6` 修复数据生成与 Runtime 中最关键的两个问题：`retrieved_documents` 与 `citations` 分离，以及多法条 chunk 的拆分。与此同时，检索相关性阈值和原始 PDF 截断问题需要基于 Retriever / 文档解析器继续处理，不能仅靠 trajectory 层伪造修复。
+随机抽样轨迹显示，当前最大风险不是 LoRA 超参数，而是 supervision pipeline：领域路由、检索精度、引用选择和验证逻辑会把噪声写入 `agent_trajectory.jsonl`。在这些问题解决并重新生成数据前，不应把旧 trajectory 直接作为高质量 SFT 数据。
 
 ## 已修复
 
-### P0：citations 不能直接复制 retrieved_documents
+### P0：非法律问题强制进入法律检索
 
-此前 retrieval 节点把所有检索结果同时写入 `retrieved_documents` 和 `citations`。现在 retrieval 只产生 `retrieved_documents`，generation 根据回答中明确出现的法条编号/完整 reference 选择 `citations`。
+Router 增加 `unknown` / abstention，Runtime 增加条件路由。非法律问题不再调用法律工具。
 
-如果回答没有实际引用某条检索证据，该证据不会进入 `citations`。
+### P0：`retrieved_documents` 与 `citations` 混淆
 
-### P0：一个 chunk 中多个法条必须拆分
+retrieval 节点只产生 `retrieved_documents`，generation 初始化 `citations=[]`，再根据答案中明确出现的法条编号，从已检索证据中选择实际使用的 citation。
 
-Runtime parser 现在会按 `第…条` 标题拆分相邻法条，并为拆出的记录生成独立 reference。这样类似第100—103条合并的问题不会继续污染 citation 粒度。
+### P0：相邻法条合并
 
-### P1：verification 不能只检查“有答案 + 有引用”
+Runtime parser 会按“第X条”标题拆分包含连续法条的 chunk，使每条法条可以独立引用。
 
-法律问题现在至少要求：答案非空、存在实际选中的 citation、citation 必须来自 retrieved_documents。非法律问题则要求没有 tool、没有 citation 且答案非空。
+### P1：verification 过简
 
-### P1：trajectory 输出安全性
+法律回答现在至少要求：answer 非空、存在 citation、citation 必须来自 retrieved documents、答案中必须出现被引用法条编号。非法律回答要求无 tool、无 citation 且 answer 非空。
 
-`distill/trajectory.py` 现在默认覆盖输出文件，只有显式 `--append` 才追加；空输入和缺少 `input/question/user_query` 字段会直接报错，而不是静默生成 0 条 trajectory。
+### P1：检索结果增加相关性控制
 
-Teacher prompt 也明确要求只引用实际使用的法条，并在法律回答中写出法条编号。
+Retriever 本身已经提供 `RetrievedChunk.score`、candidate pool 和可选 CrossEncoder rerank。MCP service 现在使用候选集、启用 rerank，并对带 score 的结果应用初始最低相关性门槛 `0.45`，同时将 score 写入 tool result，供 trajectory 保留。
+
+> 注意：`0.45` 是当前工程初始值，不是最终标准。必须通过 retrieval benchmark 校准。
 
 ## 尚未完全解决
 
-### P1：检索相关性过滤 / rerank
+### P1：Retriever score / threshold 需要 benchmark 校准
 
-当前 Runtime 能区分“检索到”和“实际引用”，但不能从现有 `tool_result` 中可靠获得原始 similarity score。因此不能在没有 Retriever score contract 的情况下硬编码 `score < 0.7`。
+Chroma 的 distance 被当前代码映射到 `[0,1]` score，但不能假设 `0.45` 或 `0.70` 在所有 embedding / metric 下都是正确阈值。下一步应建立有 gold reference 的 retrieval benchmark，统计 Precision@1/3/5、Recall@1/3/5、MRR，并据此选择阈值。
 
-正确的下一步是让 Retriever 返回结构化结果：
+### P1：Reranker 模型是否真正启用
 
-```json
-{
-  "reference": "...",
-  "content": "...",
-  "score": 0.82
-}
-```
-
-然后在 retrieval 层做 threshold + top-k/rerank。阈值必须通过 benchmark 校准，不能直接把 0.7 当作普适标准。
+系统支持 CrossEncoder，但只有配置 `AGENT_DISTILL_RERANKER_MODEL` 时才会实际加载模型。未配置时保持 embedding 排序。因此重新生成 trajectory 前应确认环境变量已经指向本地可用 reranker，避免误以为已经完成二阶段排序。
 
 ### P2：PDF 法条截断
 
-第91条只出现部分条文等情况属于源文档解析/切块问题。Trajectory 层不能可靠补全文本，否则会制造训练数据。需要检查原始 PDF、parser 和 chunking 策略，建立法条完整性测试。
+第91条只出现部分条文等问题属于源 PDF 解析/切块问题。不能让 LLM 自动补全文本，否则会制造训练集幻觉。需要检查原始 PDF、parser 和 chunking，并增加法条完整性测试。
 
-## 数据生成注意事项
+### P1：Citation 的法律语义正确性
 
-修复代码后，旧的 `agent_trajectory.jsonl` 不会自动变干净。必须重新生成 trajectory。建议先备份旧结果，再使用：
+当前验证可以确认 citation 来自 retrieval，并且答案明确提到对应法条编号，但还不能证明答案对法条含义的解释完全正确。后续可以增加 evidence entailment / citation consistency 检查。
+
+## 重新生成 trajectory
+
+旧 `agent_trajectory.jsonl` 应作为历史实验数据保留，不直接覆盖使用。修复后的 pipeline 应重新生成，例如：
 
 ```powershell
 uv run python -m distill.trajectory distill/data/phase5_raw_questions.jsonl --output distill/data/agent_trajectory.jsonl
 ```
 
-默认会覆盖旧文件，避免重复追加。
+默认覆盖；只有显式 `--append` 才追加。
+
+建议先抽样 20~50 条人工复核，再生成最终 Decision / Answer SFT 数据。
 
 ## 验收标准
 
-1. 非法律问题不会执行法律 tool。
-2. `retrieved_documents` 可以包含候选噪声，但 `citations` 只包含回答实际使用的证据。
-3. 一个记录对应一个法条，不能把相邻法条合并成一个 citation 单元。
-4. verification 能识别无效/缺失 citation。
-5. trajectory 生成失败必须明确报错，不允许静默写入 0 条。
-6. 在 Retriever 暴露 score 后，再加入相关性 threshold/rerank benchmark。
+1. labor/civil/non-legal/ambiguous Router 均有独立测试。
+2. Retrieval 报告 Precision@1/3/5、Recall@1/3/5、MRR。
+3. `citations` 是 `retrieved_documents` 的子集。
+4. non-legal：`tool_name` 为空、`retrieved_documents=[]`、`citations=[]`。
+5. legal：每个 citation 能在 answer 中定位到明确法条编号。
+6. 相邻法条必须拆成独立 reference。
+7. 检索 score 和 reranker 状态在 trajectory 中可观察。
+8. 抽样人工复核通过后，才重新训练 Decision LoRA / Answer LoRA。
