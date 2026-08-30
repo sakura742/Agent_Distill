@@ -1,0 +1,15 @@
+{"id":"router-v2-001","category":"labor","question":"公司要求员工周末加班但不给加班费怎么办？","gold":"labor"}
+{"id":"router-v2-002","category":"labor","question":"公司拖欠工资超过一个月，应该通过什么途径维权？","gold":"labor"}
+{"id":"router-v2-003","category":"labor","question":"被公司突然辞退，劳动合同还没到期怎么办？","gold":"labor"}
+{"id":"router-v2-004","category":"labor","question":"公司没有依法缴纳社会保险怎么办？","gold":"labor"}
+{"id":"router-v2-005","category":"civil","question":"房东不退押金怎么办？","gold":"civil"}
+{"id":"router-v2-006","category":"civil","question":"朋友借钱到期后一直不还怎么办？","gold":"civil"}
+{"id":"router-v2-007","category":"civil","question":"买卖合同对方逾期交货怎么办？","gold":"civil"}
+{"id":"router-v2-008","category":"civil","question":"楼上邻居漏水把我家天花板泡了，可以要求赔偿吗？","gold":"civil"}
+{"id":"router-v2-009","category":"civil","question":"发生交通事故导致车辆和人身损害，如何要求赔偿？","gold":"civil"}
+{"id":"router-v2-010","category":"civil","question":"邻里之间因排水、采光发生纠纷怎么办？","gold":"civil"}
+{"id":"router-v2-011","category":"non_legal","question":"你好，今天天气不错，你吃了吗？","gold":"unknown"}
+{"id":"router-v2-012","category":"non_legal","question":"帮我写一个 Python 程序读取 CSV 文件。","gold":"unknown"}
+{"id":"router-v2-013","category":"non_legal","question":"台北今天晚上有什么好吃的？","gold":"unknown"}
+{"id":"router-v2-014","category":"ambiguous","question":"公司培训期间发生意外，责任应该怎么判断？","gold":"unknown"}
+{"id":"router-v2-015","category":"ambiguous","question":"公司让我赔培训费用，我是否需要承担？","gold":"labor"}
