@@ -1,8 +1,22 @@
-"""Filter trajectory JSONL into accepted and rejected datasets."""
+"""Filter trajectory JSONL into accepted and rejected datasets.
+
+Valid supervision includes both legal tool-use cases and explicit non-legal/
+unknown routing cases. Non-legal examples are valuable negative routing
+supervision because the Decision LoRA must learn when not to call a legal
+retrieval tool.
+"""
 from __future__ import annotations
 import argparse
 import json
 from pathlib import Path
+
+
+def _is_valid_decision(row: dict) -> bool:
+    domain = row.get("domain")
+    tool_name = (row.get("tool") or {}).get("name")
+    if domain in (None, "unknown"):
+        return not tool_name
+    return bool(tool_name)
 
 
 def filter_trajectories(source: Path, accepted: Path, rejected: Path) -> tuple[int, int]:
@@ -17,7 +31,7 @@ def filter_trajectories(source: Path, accepted: Path, rejected: Path) -> tuple[i
             answer_ok = bool(str(row.get("answer", "")).strip())
             verification = row.get("verification") or {}
             verification_ok = verification.get("passed") is True
-            decision_ok = row.get("domain") not in (None, "unknown") and bool((row.get("tool") or {}).get("name"))
+            decision_ok = _is_valid_decision(row)
             target = good_file if answer_ok and verification_ok and decision_ok else bad_file
             target.write(json.dumps(row, ensure_ascii=False) + "\n")
             if target is good_file:
