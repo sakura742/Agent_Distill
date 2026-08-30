@@ -52,7 +52,7 @@ class Settings:
     qwen35_model_path: str = field(default_factory=lambda: _env("AGENT_DISTILL_QWEN35_MODEL_PATH", r"D:\py\models"))
     qwen35_lora_output_dir: Path = field(default_factory=lambda: _env_path("AGENT_DISTILL_QWEN35_LORA_OUTPUT_DIR", PROJECT_ROOT / "qwen35_lora"))
     qwen35_decision_lora_output_dir: Path = field(default_factory=lambda: _env_path("AGENT_DISTILL_QWEN35_DECISION_LORA_OUTPUT_DIR", PROJECT_ROOT / "qwen35_decision_lora"))
-    qwen35_answer_lora_output_dir: Path = field(default_factory=lambda: _env_path("AGENT_DISTILL_QWEN35_ANSWER_LORA_OUTPUT_DIR", PROJECT_ROOT / "distill" / "data" / "phase5_answer.jsonl"))
+    qwen35_answer_lora_output_dir: Path = field(default_factory=lambda: _env_path("AGENT_DISTILL_QWEN35_ANSWER_LORA_OUTPUT_DIR", PROJECT_ROOT / "qwen35_answer_lora"))
     phase5_decision_data_path: Path = field(default_factory=lambda: _env_path("AGENT_DISTILL_PHASE5_DECISION_DATA_PATH", PROJECT_ROOT / "distill" / "data" / "phase5_decision.jsonl"))
     phase5_answer_data_path: Path = field(default_factory=lambda: _env_path("AGENT_DISTILL_PHASE5_ANSWER_DATA_PATH", PROJECT_ROOT / "distill" / "data" / "phase5_answer.jsonl"))
 
