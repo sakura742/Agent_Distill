@@ -10,6 +10,7 @@ import json
 from pathlib import Path
 from typing import Any
 
+from configs.settings import settings
 from knowledge.retriever import get_retriever
 
 
@@ -27,11 +28,10 @@ def run(path: Path, *, top_k: int = 5, candidate_k: int = 20, rewrite: bool = Fa
             rewrite=rewrite,
         )
         scores = [item.rerank_score for item in results]
-        active = any(score is not None for score in scores)
         details.append({
             "id": row.get("id", row["question"]),
             "question": row["question"],
-            "reranker_active": active,
+            "reranker_active": any(score is not None for score in scores),
             "rerank_scores": scores,
             "retrieved_references": [
                 f"{item.metadata.get('law_name', '')} {item.metadata.get('article', '')}".strip()
@@ -40,7 +40,8 @@ def run(path: Path, *, top_k: int = 5, candidate_k: int = 20, rewrite: bool = Fa
         })
     return {
         "samples": len(details),
-        "reranker_model_configured": bool(getattr(retriever.settings if hasattr(retriever, 'settings') else object(), 'reranker_model_name', None)),
+        "reranker_model_configured": bool(settings.reranker_model_name),
+        "reranker_model_name": settings.reranker_model_name,
         "details": details,
     }
 
