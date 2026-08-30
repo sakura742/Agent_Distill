@@ -1,8 +1,10 @@
 # -*- coding: utf-8 -*-
-"""将法律章节转换为稳定的检索主题词，增强中文法律语义检索。"""
+"""将法律章节与条款概念转换为稳定的检索主题词。"""
 from __future__ import annotations
 
 import re
+
+from knowledge.legal_concepts import article_concepts
 
 
 _TOPIC_RULES: tuple[tuple[tuple[str, ...], str], ...] = (
@@ -27,7 +29,8 @@ def chapter_topics(chapter: str | None) -> str:
 
 
 def enriched_retrieval_text(
-    *, law_name: str,
+    *,
+    law_name: str,
     article: str | None,
     chapter: str | None,
     text: str,
@@ -39,6 +42,10 @@ def enriched_retrieval_text(
         topics = chapter_topics(chapter)
         if topics:
             parts.append(f"法律主题：{topics}")
+    domain = "civil" if "民法" in law_name else "labor" if "劳动" in law_name else ""
+    concepts = article_concepts(domain, article)
+    if concepts:
+        parts.append("法律概念：" + " ".join(concepts))
     if article:
         parts.append(f"第{article}条")
     parts.append(text)
