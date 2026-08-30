@@ -34,10 +34,7 @@ class RetrievedChunk:
 
 @lru_cache(maxsize=8)
 def _get_embeddings(model_name: str) -> HuggingFaceEmbeddings:
-    return HuggingFaceEmbeddings(
-        model_name=model_name,
-        encode_kwargs={"normalize_embeddings": True},
-    )
+    return HuggingFaceEmbeddings(model_name=model_name, encode_kwargs={"normalize_embeddings": True})
 
 
 def _distance_to_score(distance: float, metric: str) -> float:
@@ -54,7 +51,7 @@ def _cn_ngrams(text: str, n_min: int = 2, n_max: int = 4) -> set[str]:
         return {text} if text else set()
     grams: set[str] = set()
     for n in range(n_min, min(n_max, len(text)) + 1):
-        grams.update(text[i:i+n] for i in range(len(text) - n + 1))
+        grams.update(text[i:i + n] for i in range(len(text) - n + 1))
     return grams
 
 
@@ -88,11 +85,7 @@ class LegalRetriever:
         metadata = self._collection_metadata()
         indexed_model = metadata.get("embedding_model")
         if indexed_model and str(indexed_model) != str(self.embedding_model_name):
-            raise KnowledgeBaseError(
-                "Embedding 模型与 Chroma 索引不一致: "
-                f"index={indexed_model!r}, query={self.embedding_model_name!r}. "
-                "请使用对应的 chroma_db_dir 或重新 ingest --reset。"
-            )
+            raise KnowledgeBaseError(f"Embedding 模型与 Chroma 索引不一致: index={indexed_model!r}, query={self.embedding_model_name!r}. 请使用对应的 chroma_db_dir 或重新 ingest --reset。")
         metric = str(metadata.get("hnsw:space", "cosine")).lower()
         if metric != "cosine":
             raise KnowledgeBaseError(f"Chroma collection '{self.collection}' 使用 {metric!r} metric；Phase 6 当前要求 cosine。请重新 ingest --reset。")
@@ -100,13 +93,8 @@ class LegalRetriever:
             expected_dim = len(self.embeddings.embed_query("法律检索维度检查"))
             stored = self.vectorstore._collection.get(limit=1, include=["embeddings"])
             vectors = stored.get("embeddings") if stored else None
-            if vectors is not None and len(vectors) > 0 and vectors[0] is not None:
-                actual_dim = len(vectors[0])
-                if actual_dim != expected_dim:
-                    raise KnowledgeBaseError(
-                        "Embedding 维度与 Chroma 索引不一致: "
-                        f"index={actual_dim}, query={expected_dim}. 请删除该 Chroma 目录后按同一 embedding 模型重新建库。"
-                    )
+            if vectors is not None and len(vectors) > 0 and vectors[0] is not None and len(vectors[0]) != expected_dim:
+                raise KnowledgeBaseError(f"Embedding 维度与 Chroma 索引不一致: index={len(vectors[0])}, query={expected_dim}. 请删除该 Chroma 目录后按同一 embedding 模型重新建库。")
         except KnowledgeBaseError:
             raise
         except Exception:
@@ -118,10 +106,7 @@ class LegalRetriever:
     def _search_once(self, query: str, *, candidate_k: int, filters: dict[str, Any]) -> list[RetrievedChunk]:
         raw = self.vectorstore.similarity_search_with_score(query, k=candidate_k, filter=filters)
         metric = self._distance_metric()
-        return [
-            RetrievedChunk(document.page_content, document.metadata, _distance_to_score(float(distance), metric), float(distance))
-            for document, distance in raw
-        ]
+        return [RetrievedChunk(document.page_content, document.metadata, _distance_to_score(float(distance), metric), float(distance)) for document, distance in raw]
 
     @staticmethod
     def _merge_query_variants(*variant_results: list[RetrievedChunk]) -> list[RetrievedChunk]:
@@ -145,15 +130,12 @@ class LegalRetriever:
             filters["law_name"] = law_name
         if article:
             filters["article"] = article
-
         original_results = self._search_once(query, candidate_k=candidate_k, filters=filters)
         results = original_results
         if rewrite:
             rewritten_query = rewrite_legal_query(query, self.domain)
             if rewritten_query != query:
-                rewritten_results = self._search_once(rewritten_query, candidate_k=candidate_k, filters=filters)
-                results = self._merge_query_variants(original_results, rewritten_results)
-
+                results = self._merge_query_variants(original_results, self._search_once(rewritten_query, candidate_k=candidate_k, filters=filters))
         if hybrid and len(results) > 1:
             semantic_max = max(item.score for item in results)
             semantic_min = min(item.score for item in results)
@@ -162,13 +144,9 @@ class LegalRetriever:
             for item in results:
                 semantic_rank = (item.score - semantic_min) / span if span > 1e-12 else 0.0
                 lexical = _lexical_overlap(query, item.content)
-                # Lexical evidence is deliberately dominant in hybrid mode:
-                # exact legal phrases such as “逾期交货” should outweigh a small
-                # embedding-distance advantage from a merely adjacent article.
                 hybrid_score = 0.30 * semantic_rank + 0.70 * lexical
                 ranked.append(RetrievedChunk(item.content, {**item.metadata, "lexical_score": lexical}, item.score, item.distance, hybrid_score))
             results = sorted(ranked, key=lambda item: float(item.rerank_score or 0.0), reverse=True)
-
         if rerank and len(results) > 1:
             results = self._rerank(query, results)
         return results[:top_k]
