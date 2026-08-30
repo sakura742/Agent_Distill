@@ -10,6 +10,10 @@ from knowledge.retriever import LegalRetriever
 from mcp_service.tool_registry import ToolDefinition, ToolRegistry
 
 
+DEFAULT_MIN_RELEVANCE = 0.45
+DEFAULT_CANDIDATE_MULTIPLIER = 4
+
+
 class LegalRetrieverService:
     def __init__(self, registry: ToolRegistry):
         self.registry = registry
@@ -30,10 +34,14 @@ class LegalRetrieverService:
 
     @staticmethod
     def _search_retriever(retriever, query: str, limit: int):
-        """Support both the current retriever.search API and legacy invoke fakes."""
         search = getattr(retriever, "search", None)
         if callable(search):
-            return search(query, top_k=limit)
+            return search(
+                query,
+                top_k=limit,
+                candidate_k=max(limit * DEFAULT_CANDIDATE_MULTIPLIER, limit),
+                rerank=True,
+            )
         invoke = getattr(retriever, "invoke", None)
         if callable(invoke):
             return invoke(query)
@@ -57,7 +65,22 @@ class LegalRetrieverService:
         def metadata_of(item):
             return getattr(item, "metadata", {}) or {}
 
-        # Legacy test doubles only provide page_content; preserve their exact output.
+        def score_of(item):
+            try:
+                return float(getattr(item, "score", 0.0))
+            except (TypeError, ValueError):
+                return 0.0
+
+        # Apply the relevance gate after retrieval. A legacy fake without scores
+        # keeps its old behavior so existing contract tests remain compatible.
+        scored = [item for item in results if hasattr(item, "score")]
+        if scored:
+            filtered = [item for item in scored if score_of(item) >= DEFAULT_MIN_RELEVANCE]
+            if filtered:
+                results = filtered
+            else:
+                results = scored[:1]
+
         if all(not metadata_of(item) for item in results):
             return "\n\n".join(content_of(item) for item in results)
 
@@ -65,7 +88,8 @@ class LegalRetrieverService:
             f"[{metadata_of(item).get('law_name', '未知法律')}"
             f" {metadata_of(item).get('article', '')}"
             f" | {metadata_of(item).get('source', '')}"
-            f" p.{metadata_of(item).get('page', '')}]\n{content_of(item)}"
+            f" p.{metadata_of(item).get('page', '')}"
+            f" | score={score_of(item):.3f}]\n{content_of(item)}"
             for item in results
         )
 
