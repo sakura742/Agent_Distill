@@ -20,6 +20,8 @@ class RetrievedChunk:
     content: str
     metadata: dict[str, Any]
     score: float
+    distance: float | None = None
+    rerank_score: float | None = None
 
 
 @lru_cache(maxsize=1)
@@ -28,12 +30,30 @@ def _get_embeddings() -> HuggingFaceEmbeddings:
     return HuggingFaceEmbeddings(model_name=settings.embedding_model_name)
 
 
+def _distance_to_score(distance: float, metric: str) -> float:
+    """Convert Chroma distance to a monotonic [0,1] relevance score.
+
+    Chroma commonly uses squared L2 distance by default.  It must not be
+    converted with ``1 - distance / 2`` because L2 distances can exceed 2,
+    which collapses many legitimate results to 0.  For cosine distance,
+    ``1-distance`` is the natural similarity.  For L2 we use a bounded
+    reciprocal transform; this is intentionally a ranking/diagnostic score,
+    not a calibrated probability.
+    """
+    d = max(0.0, float(distance))
+    metric = (metric or "l2").lower()
+    if metric in {"cosine", "cos"}:
+        return max(0.0, min(1.0, 1.0 - d))
+    if metric in {"ip", "inner_product", "inner-product"}:
+        return max(0.0, min(1.0, 1.0 - d))
+    return 1.0 / (1.0 + d)
+
+
 class LegalRetriever:
     def __init__(self, domain: str):
         corpus = corpus_by_domain(domain)
         self.domain = domain
         self.collection = corpus.collection
-        # All domain retrievers share the same embedding model instance.
         self.embeddings = _get_embeddings()
         try:
             self.vectorstore = Chroma(
@@ -49,6 +69,10 @@ class LegalRetriever:
             raise KnowledgeBaseError(
                 f"无法打开法律知识库 collection '{self.collection}'，请先运行 knowledge/ingest.py"
             ) from exc
+
+    def _distance_metric(self) -> str:
+        metadata = getattr(self.vectorstore._collection, "metadata", None) or {}
+        return str(metadata.get("hnsw:space", "l2"))
 
     def search(
         self,
@@ -77,11 +101,13 @@ class LegalRetriever:
             k=candidate_k,
             filter=filters,
         )
+        metric = self._distance_metric()
         results = [
             RetrievedChunk(
                 content=document.page_content,
                 metadata=document.metadata,
-                score=max(0.0, min(1.0, 1.0 - float(distance) / 2.0)),
+                distance=float(distance),
+                score=_distance_to_score(float(distance), metric),
             )
             for document, distance in raw
         ]
@@ -101,11 +127,20 @@ class LegalRetriever:
             model = CrossEncoder(model_name)
             pairs = [(query, item.content) for item in results]
             scores = model.predict(pairs)
-            return [
-                item for _, item in sorted(
-                    zip(scores, results), key=lambda pair: float(pair[0]), reverse=True
+            reranked = []
+            for raw_score, item in zip(scores, results):
+                reranked.append(
+                    RetrievedChunk(
+                        content=item.content,
+                        metadata=item.metadata,
+                        distance=item.distance,
+                        score=item.score,
+                        rerank_score=float(raw_score),
+                    )
                 )
-            ]
+            return [item for _, item in sorted(
+                zip(scores, reranked), key=lambda pair: float(pair[0]), reverse=True
+            )]
         except Exception:
             return results
 
