@@ -49,8 +49,6 @@ class LegalRetrieverService:
                 if not accepts_var_kwargs:
                     kwargs = {key: value for key, value in kwargs.items() if key in parameters}
             except (TypeError, ValueError):
-                # Some extension/bound callables do not expose signatures; retain
-                # the current full contract in that case.
                 pass
             return search(query, **kwargs)
         invoke = getattr(retriever, "invoke", None)
@@ -81,8 +79,12 @@ class LegalRetrieverService:
                 return 0.0
 
         scored = [item for item in results if hasattr(item, "score")]
+        # Benchmark observes the unfiltered Retriever. The MCP/production
+        # evidence contract keeps a conservative 0.45 gate unless overridden.
         threshold = settings.retrieval_min_score
-        if scored and threshold is not None:
+        if threshold is None:
+            threshold = 0.45
+        if scored:
             filtered = [item for item in scored if score_of(item) >= threshold]
             results = filtered if filtered else scored[:1]
         if all(not metadata_of(item) for item in results):
