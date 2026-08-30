@@ -134,6 +134,11 @@ def _select_citations(answer: str, docs: list[dict[str, Any]]) -> list[dict[str,
     return selected
 
 
+def _answer_article_numbers(answer: str) -> set[str]:
+    """Return article numbers explicitly mentioned by the generated answer."""
+    return set(re.findall(r"第([一二三四五六七八九十百千万亿零〇两]+)条", answer))
+
+
 def generation(state: AgentState, answer_generator: Callable[[str, str, list[dict[str, Any]]], str] | None = None) -> AgentState:
     q = state["question"]
     evidence = state.get("tool_result", "")
@@ -161,14 +166,34 @@ def verification(state: AgentState) -> AgentState:
         cited_refs = {str(d.get("reference", "")) for d in citations}
         retrieved_refs = {str(d.get("reference", "")) for d in docs}
         valid_citations = cited_refs.issubset(retrieved_refs)
-        citation_mentions: list[bool] = []
-        for d in citations:
-            ref = str(d.get("reference", ""))
-            article = _article_number(str(d.get("content", ""))) or _reference_article_number(ref)
-            citation_mentions.append(bool(ref and ref in answer) or bool(article and article in answer))
-        answer_mentions_citation = bool(citations) and all(citation_mentions)
-        ok = bool(answer.strip()) and bool(citations) and valid_citations and answer_mentions_citation
-        reason = "answer_and_used_citations_valid" if ok else "missing_invalid_or_unsubstantiated_citations"
+        citation_numbers = {_article_number(str(d.get("content", ""))) or _reference_article_number(str(d.get("reference", ""))) for d in citations}
+        mentioned_numbers = _answer_article_numbers(answer)
+        citation_mentions = {n for n in citation_numbers if n}
+        answer_mentions_citation = bool(citations) and citation_mentions.intersection(mentioned_numbers)
+        unsupported_answer_citations = mentioned_numbers - citation_mentions
+
+        # If the answer names an article that was not among the selected
+        # citations, the answer is not grounded in the retrieved evidence.
+        # This catches cases such as a labor-law retrieval followed by an
+        # answer citing unrelated Civil Code articles from model memory.
+        grounded = not unsupported_answer_citations
+
+        # A score of zero is explicitly treated as "unknown relevance" rather
+        # than evidence of relevance. Legacy fake retrievers without a score
+        # remain compatible with the Phase 4 tests.
+        scored_docs = [d for d in citations if "score" in d]
+        relevance_known = not scored_docs or any(float(d.get("score", 0.0)) > 0.0 for d in scored_docs)
+
+        ok = (
+            bool(answer.strip()) and bool(citations) and valid_citations
+            and answer_mentions_citation and grounded and relevance_known
+        )
+        if not grounded:
+            reason = "answer_cites_unretrieved_articles"
+        elif not relevance_known:
+            reason = "citation_relevance_unknown"
+        else:
+            reason = "answer_and_used_citations_valid" if ok else "missing_invalid_or_unsubstantiated_citations"
     v = {"passed": ok, "citation_count": len(citations), "retrieved_count": len(docs), "reason": reason}
     return {"verification": v, "trace": _trace(state, "verification", **v)}
 
@@ -183,6 +208,4 @@ def route_after_verification(state: AgentState) -> str:
 
 def retry_plan(state: AgentState) -> AgentState:
     return {"retry_count": state.get("retry_count", 0) + 1,
-            "plan": ["retry_retrieval", "generate_answer", "verify_answer"],
-            "tool_arguments": {"query": state["question"], "limit": 8},
             "trace": _trace(state, "retry_plan", retry_count=state.get("retry_count", 0) + 1)}
