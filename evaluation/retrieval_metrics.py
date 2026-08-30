@@ -7,10 +7,11 @@ from typing import Iterable
 
 
 def recall_at_k(retrieved_ids: Iterable[str], relevant_ids: set[str], k: int) -> float:
+    """Return the fraction of relevant documents found in the top-k results."""
     if not relevant_ids or k <= 0:
         return 0.0
-    retrieved = list(retrieved_ids)[:k]
-    return 1.0 if any(item in relevant_ids for item in retrieved) else 0.0
+    retrieved = set(list(retrieved_ids)[:k])
+    return len(retrieved & relevant_ids) / len(relevant_ids)
 
 
 def mrr(retrieved_ids: Iterable[str], relevant_ids: set[str]) -> float:
