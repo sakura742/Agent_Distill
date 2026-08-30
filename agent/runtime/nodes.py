@@ -78,8 +78,14 @@ def _split_articles(content: str) -> list[str]:
 
 
 def _article_number(text: str) -> str | None:
-    m = re.search(r"^第([一二三四五六七八九十百千万亿零〇两]+)条", text.strip())
+    m = re.search(r"第([一二三四五六七八九十百千万亿零〇两]+)条", text.strip())
     return m.group(1) if m else None
+
+
+def _reference_article_number(reference: str) -> str | None:
+    """Extract an article number from a reference header when legacy retrievers omit it from content."""
+    return _article_number(reference) or (re.search(r"(?:^|\s)(\d+)\s*(?:条)?(?:\s*\||$)", reference).group(1)
+                                           if re.search(r"(?:^|\s)(\d+)\s*(?:条)?(?:\s*\||$)", reference) else None)
 
 
 def _parse_retrieval(tool_result: str) -> list[dict[str, Any]]:
@@ -122,7 +128,7 @@ def _select_citations(answer: str, docs: list[dict[str, Any]]) -> list[dict[str,
     selected: list[dict[str, Any]] = []
     for doc in docs:
         ref = str(doc.get("reference", ""))
-        article = _article_number(str(doc.get("content", "")))
+        article = _article_number(str(doc.get("content", ""))) or _reference_article_number(ref)
         if (ref and ref in answer) or (article and article in answer):
             selected.append(doc)
     return selected
@@ -155,7 +161,7 @@ def verification(state: AgentState) -> AgentState:
         cited_refs = {d.get("reference") for d in citations}
         retrieved_refs = {d.get("reference") for d in docs}
         valid_citations = cited_refs.issubset(retrieved_refs)
-        citation_numbers = {_article_number(str(d.get("content", ""))) for d in citations}
+        citation_numbers = {_article_number(str(d.get("content", ""))) or _reference_article_number(str(d.get("reference", ""))) for d in citations}
         answer_mentions_citation = any(n and n in answer for n in citation_numbers)
         ok = bool(answer.strip()) and bool(citations) and valid_citations and answer_mentions_citation
         reason = "answer_and_used_citations_valid" if ok else "missing_invalid_or_unsubstantiated_citations"
