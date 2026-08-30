@@ -107,14 +107,21 @@ uv run python -m distill.audit_phase5_data `
   distill/data/phase5_answer.jsonl
 ```
 
-任何以下情况都应停止训练：
+`audit_phase5_data.py` 同时支持：
+
+- validated trajectory JSONL；
+- `prepare_phase5_data.py` 生成的 `{"messages": [...]}` ChatML JSONL。
+
+它会检查：
 
 ```text
-rows = 0
-empty_question > 0
-empty_answer > 0
-duplicate_questions > 0
+rows > 0
+empty_question = 0
+empty_answer = 0
+duplicate_questions = 0
 ```
+
+任何失败都应停止训练。
 
 ## 7. 第一轮 LoRA
 
