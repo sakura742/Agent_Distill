@@ -1,46 +1,40 @@
-"""
-法律咨询评估平台 — FastAPI 后端
-调用 agent/inference_core.py 的两个模型，提供双列对比 + 多轮对话。
+"""法律咨询评估平台 — FastAPI 后端。"""
 
-Phase 1 改动：
-  1. import 路径从 `inference.inference_core` 改为 `agent.inference_core`
-     （inference/ 目录已迁移为 agent/）。
-  2. print 换成 logger。
-  3. MAX_HISTORY_TURNS 从 configs.settings 读取（与 agent/inference_core.py
-     共享同一个配置项，避免两处硬编码的轮数不同步）。
-路由、会话管理（内存字典）、请求/响应模型均未改变。
-"""
+from __future__ import annotations
 
+import os
 import uuid
+
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
 
-import sys, os
+import sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from agent.inference_core import load_models, run_inference
 from configs.settings import settings
 from app.logging_config import get_logger
 
 logger = get_logger(__name__)
-
-# ── FastAPI 应用 ──────────────────────────────────────────────
 app = FastAPI(title="法律咨询评估平台")
 
-# ── 启动时加载一次 ────────────────────────────────────────────
-logger.info("加载模型和向量库...")
-resources = load_models()
-logger.info("就绪")
+# 模型/向量库在首次实际请求时加载，避免 `import web.app` 触发本机模型加载。
+_resources = None
+sessions: dict[str, list] = {}
+MAX_HISTORY_TURNS = settings.max_history_turns
 
-# ── 会话管理（内存） ──────────────────────────────────────────
-sessions: dict[str, list] = {}  # session_id -> history list
 
-MAX_HISTORY_TURNS = settings.max_history_turns  # 保留最近 N 轮对话
+def _get_resources():
+    global _resources
+    if _resources is None:
+        from agent.inference_core import load_models
+        logger.info("加载模型和向量库...")
+        _resources = load_models()
+        logger.info("就绪")
+    return _resources
 
 
 def _trim_history(history: list) -> list:
-    """保留最近 MAX_HISTORY_TURNS 轮（每轮 user+assistant 两条）"""
     return history[-(MAX_HISTORY_TURNS * 2):]
 
 
@@ -49,7 +43,6 @@ def _append_history(session_id: str, role: str, content: str):
     sessions[session_id] = _trim_history(sessions[session_id])
 
 
-# ── 请求/响应模型 ────────────────────────────────────────────
 class ChatRequest(BaseModel):
     session_id: str
     message: str
@@ -65,7 +58,6 @@ class SessionResponse(BaseModel):
     session_id: str
 
 
-# ── API 路由 ──────────────────────────────────────────────────
 @app.post("/session/new", response_model=SessionResponse)
 def new_session():
     session_id = uuid.uuid4().hex[:12]
@@ -84,14 +76,10 @@ def get_history(session_id: str):
 def chat(req: ChatRequest):
     if req.session_id not in sessions:
         raise HTTPException(status_code=404, detail="会话不存在，请先创建会话")
-
-    history = sessions[req.session_id]
-    result = run_inference(resources, user_query=req.message, history=history)
-
-    # 将本轮对话追加到会话历史
+    from agent.inference_core import run_inference
+    result = run_inference(_get_resources(), user_query=req.message, history=sessions[req.session_id])
     _append_history(req.session_id, "user", req.message)
     _append_history(req.session_id, "assistant", result["tuned_answer"])
-
     return ChatResponse(
         raw_answer=result["raw_answer"],
         tuned_answer=result["tuned_answer"],
@@ -99,7 +87,6 @@ def chat(req: ChatRequest):
     )
 
 
-# ── 静态文件 / 前端 ───────────────────────────────────────────
 @app.get("/")
 def index():
     html_path = os.path.join(os.path.dirname(__file__), "index.html")
