@@ -19,7 +19,6 @@ class LegalRetrieverService:
         self.registry = registry
 
     def collection_for_tool(self, tool_name: str) -> str:
-        """Resolve a tool name through the MCP tool contract."""
         tool: ToolDefinition = self.registry.get(tool_name)
         if not tool.collection:
             raise KnowledgeBaseError(f"工具 {tool_name} 未配置 collection")
@@ -41,6 +40,7 @@ class LegalRetrieverService:
                 top_k=limit,
                 candidate_k=max(limit * DEFAULT_CANDIDATE_MULTIPLIER, limit),
                 rerank=True,
+                hybrid=True,
             )
         invoke = getattr(retriever, "invoke", None)
         if callable(invoke):
@@ -71,15 +71,10 @@ class LegalRetrieverService:
             except (TypeError, ValueError):
                 return 0.0
 
-        # Apply the relevance gate after retrieval. A legacy fake without scores
-        # keeps its old behavior so existing contract tests remain compatible.
         scored = [item for item in results if hasattr(item, "score")]
         if scored:
             filtered = [item for item in scored if score_of(item) >= DEFAULT_MIN_RELEVANCE]
-            if filtered:
-                results = filtered
-            else:
-                results = scored[:1]
+            results = filtered if filtered else scored[:1]
 
         if all(not metadata_of(item) for item in results):
             return "\n\n".join(content_of(item) for item in results)
@@ -89,12 +84,12 @@ class LegalRetrieverService:
             f" {metadata_of(item).get('article', '')}"
             f" | {metadata_of(item).get('source', '')}"
             f" p.{metadata_of(item).get('page', '')}"
-            f" | score={score_of(item):.3f}]\n{content_of(item)}"
+            f" | score={score_of(item):.3f}"
+            f" | rerank_score={getattr(item, 'rerank_score', None)!s}]\n{content_of(item)}"
             for item in results
         )
 
 
 def build_default_service() -> LegalRetrieverService:
     from configs.settings import settings
-
     return LegalRetrieverService(ToolRegistry(settings.tools_config_path))
