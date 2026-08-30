@@ -1,0 +1,8 @@
+{"id":"retrieval-v2-001","domain":"labor","question":"公司要求员工周末加班但不给加班费怎么办？","gold_references":["中华人民共和国劳动法及相关法律 四十四"]}
+{"id":"retrieval-v2-002","domain":"labor","question":"公司拖欠工资应该怎么办？","gold_references":["中华人民共和国劳动法及相关法律 五十","中华人民共和国劳动法及相关法律 九十一"]}
+{"id":"retrieval-v2-003","domain":"labor","question":"被公司违法辞退后应该怎么办？","gold_references":["中华人民共和国劳动法及相关法律 九十八"]}
+{"id":"retrieval-v2-004","domain":"labor","question":"公司没有依法缴纳社会保险怎么办？","gold_references":["中华人民共和国劳动法及相关法律 七十二"]}
+{"id":"retrieval-v2-005","domain":"civil","question":"房东不退押金怎么办？","gold_references":["中华人民共和国民法典 七百零七"]}
+{"id":"retrieval-v2-006","domain":"civil","question":"买卖合同对方逾期交货怎么办？","gold_references":["中华人民共和国民法典 五百七十七"]}
+{"id":"retrieval-v2-007","domain":"civil","question":"借款到期后债务人拒绝还款怎么办？","gold_references":["中华人民共和国民法典 六百七十五"]}
+{"id":"retrieval-v2-008","domain":"civil","question":"楼上邻居漏水把我家天花板泡了，可以要求赔偿吗？","gold_references":["中华人民共和国民法典 一千一百六十五","中华人民共和国民法典 一千一百八十四"]}
