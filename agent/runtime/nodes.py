@@ -158,11 +158,15 @@ def verification(state: AgentState) -> AgentState:
         ok = bool(answer.strip()) and not citations and not state.get("tool_name")
         reason = "non_legal_answer_present" if ok else "non_legal_routed_to_tool_or_has_citations"
     else:
-        cited_refs = {d.get("reference") for d in citations}
-        retrieved_refs = {d.get("reference") for d in docs}
+        cited_refs = {str(d.get("reference", "")) for d in citations}
+        retrieved_refs = {str(d.get("reference", "")) for d in docs}
         valid_citations = cited_refs.issubset(retrieved_refs)
-        citation_numbers = {_article_number(str(d.get("content", ""))) or _reference_article_number(str(d.get("reference", ""))) for d in citations}
-        answer_mentions_citation = any(n and n in answer for n in citation_numbers)
+        citation_mentions: list[bool] = []
+        for d in citations:
+            ref = str(d.get("reference", ""))
+            article = _article_number(str(d.get("content", ""))) or _reference_article_number(ref)
+            citation_mentions.append(bool(ref and ref in answer) or bool(article and article in answer))
+        answer_mentions_citation = bool(citations) and all(citation_mentions)
         ok = bool(answer.strip()) and bool(citations) and valid_citations and answer_mentions_citation
         reason = "answer_and_used_citations_valid" if ok else "missing_invalid_or_unsubstantiated_citations"
     v = {"passed": ok, "citation_count": len(citations), "retrieved_count": len(docs), "reason": reason}
