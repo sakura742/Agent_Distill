@@ -1,8 +1,10 @@
 # -*- coding: utf-8 -*-
-"""法域隔离的 RAG Retriever，支持 Metadata Filter 与可选 CrossEncoder Rerank。"""
+"""法域隔离的 RAG Retriever，提供语义检索、关键词混排和可选 CrossEncoder。"""
 
 from __future__ import annotations
 
+import math
+import re
 from dataclasses import dataclass
 from functools import lru_cache
 from typing import Any
@@ -26,20 +28,15 @@ class RetrievedChunk:
 
 @lru_cache(maxsize=1)
 def _get_embeddings() -> HuggingFaceEmbeddings:
-    """Load the embedding checkpoint once per process."""
-    return HuggingFaceEmbeddings(model_name=settings.embedding_model_name)
+    """Load the normalized embedding checkpoint once per process."""
+    return HuggingFaceEmbeddings(
+        model_name=settings.embedding_model_name,
+        encode_kwargs={"normalize_embeddings": True},
+    )
 
 
 def _distance_to_score(distance: float, metric: str) -> float:
-    """Convert Chroma distance to a monotonic [0,1] relevance score.
-
-    Chroma commonly uses squared L2 distance by default.  It must not be
-    converted with ``1 - distance / 2`` because L2 distances can exceed 2,
-    which collapses many legitimate results to 0.  For cosine distance,
-    ``1-distance`` is the natural similarity.  For L2 we use a bounded
-    reciprocal transform; this is intentionally a ranking/diagnostic score,
-    not a calibrated probability.
-    """
+    """Convert Chroma distance to a bounded diagnostic relevance score."""
     d = max(0.0, float(distance))
     metric = (metric or "l2").lower()
     if metric in {"cosine", "cos"}:
@@ -47,6 +44,25 @@ def _distance_to_score(distance: float, metric: str) -> float:
     if metric in {"ip", "inner_product", "inner-product"}:
         return max(0.0, min(1.0, 1.0 - d))
     return 1.0 / (1.0 + d)
+
+
+def _cn_ngrams(text: str, n_min: int = 2, n_max: int = 4) -> set[str]:
+    text = re.sub(r"\s+", "", text)
+    if len(text) < n_min:
+        return {text} if text else set()
+    grams: set[str] = set()
+    for n in range(n_min, min(n_max, len(text)) + 1):
+        grams.update(text[i : i + n] for i in range(len(text) - n + 1))
+    return grams
+
+
+def _lexical_overlap(query: str, content: str) -> float:
+    """Cheap Chinese lexical relevance used when no learned reranker is available."""
+    q = _cn_ngrams(query)
+    if not q:
+        return 0.0
+    c = _cn_ngrams(content)
+    return len(q & c) / len(q)
 
 
 class LegalRetriever:
@@ -83,24 +99,21 @@ class LegalRetriever:
         law_name: str | None = None,
         article: str | None = None,
         rerank: bool = False,
+        hybrid: bool = False,
     ) -> list[RetrievedChunk]:
         if not query or not query.strip():
             raise ValueError("query 不能为空")
         if top_k < 1:
             raise ValueError("top_k 必须 >= 1")
 
-        candidate_k = max(candidate_k or top_k * 4, top_k)
+        candidate_k = max(candidate_k or top_k * settings.retrieval_candidate_multiplier, top_k)
         filters: dict[str, Any] = {"domain": self.domain}
         if law_name:
             filters["law_name"] = law_name
         if article:
             filters["article"] = article
 
-        raw = self.vectorstore.similarity_search_with_score(
-            query,
-            k=candidate_k,
-            filter=filters,
-        )
+        raw = self.vectorstore.similarity_search_with_score(query, k=candidate_k, filter=filters)
         metric = self._distance_metric()
         results = [
             RetrievedChunk(
@@ -112,13 +125,33 @@ class LegalRetriever:
             for document, distance in raw
         ]
 
+        if hybrid and len(results) > 1:
+            # Normalize semantic scores by rank because raw Chroma scores may
+            # have a narrow dynamic range; combine them with exact lexical
+            # overlap to recover domain-specific phrases such as “逾期交货”.
+            semantic_max = max((item.score for item in results), default=0.0)
+            semantic_min = min((item.score for item in results), default=0.0)
+            span = semantic_max - semantic_min
+            ranked: list[RetrievedChunk] = []
+            for item in results:
+                semantic_rank_score = (item.score - semantic_min) / span if span > 1e-12 else 0.0
+                lexical = _lexical_overlap(query, item.content)
+                combined = 0.70 * semantic_rank_score + 0.30 * lexical
+                ranked.append(RetrievedChunk(
+                    content=item.content,
+                    metadata={**item.metadata, "lexical_score": lexical},
+                    score=item.score,
+                    distance=item.distance,
+                    rerank_score=combined,
+                ))
+            results = sorted(ranked, key=lambda item: float(item.rerank_score or 0.0), reverse=True)
+
         if rerank and len(results) > 1:
             results = self._rerank(query, results)
         return results[:top_k]
 
     @staticmethod
     def _rerank(query: str, results: list[RetrievedChunk]) -> list[RetrievedChunk]:
-        """使用 CrossEncoder 做二阶段排序；模型不可用时保留向量排序结果。"""
         model_name = getattr(settings, "reranker_model_name", None)
         if not model_name:
             return results
@@ -127,20 +160,14 @@ class LegalRetriever:
             model = CrossEncoder(model_name)
             pairs = [(query, item.content) for item in results]
             scores = model.predict(pairs)
-            reranked = []
-            for raw_score, item in zip(scores, results):
-                reranked.append(
-                    RetrievedChunk(
-                        content=item.content,
-                        metadata=item.metadata,
-                        distance=item.distance,
-                        score=item.score,
-                        rerank_score=float(raw_score),
-                    )
-                )
-            return [item for _, item in sorted(
-                zip(scores, reranked), key=lambda pair: float(pair[0]), reverse=True
-            )]
+            reranked = [RetrievedChunk(
+                content=item.content,
+                metadata=item.metadata,
+                distance=item.distance,
+                score=item.score,
+                rerank_score=float(raw_score),
+            ) for raw_score, item in zip(scores, results)]
+            return sorted(reranked, key=lambda item: float(item.rerank_score or 0.0), reverse=True)
         except Exception:
             return results
 
