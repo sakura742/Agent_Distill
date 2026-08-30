@@ -15,7 +15,7 @@ from langchain_community.vectorstores import Chroma
 from app.logging_config import get_logger
 from configs.settings import settings
 from knowledge.domain_config import LEGAL_CORPORA
-from knowledge.legal_chunker import documents_from_pdf_page
+from knowledge.legal_chunker import documents_from_pdf_pages
 
 logger = get_logger(__name__)
 
@@ -27,19 +27,15 @@ def build_collection(corpus, *, reset: bool = False) -> int:
         return 0
 
     logger.info("开始解析 %s -> collection=%s", corpus.filename, corpus.collection)
-    docs = []
     with fitz.open(file_path) as pdf_doc:
-        for page_index, page in enumerate(pdf_doc, start=1):
-            docs.extend(
-                documents_from_pdf_page(
-                    page.get_text("text"),
-                    domain=corpus.domain,
-                    law_name=corpus.law_name,
-                    source=corpus.filename,
-                    page=page_index,
-                )
-            )
+        pages = [page.get_text("text") for page in pdf_doc]
 
+    docs = documents_from_pdf_pages(
+        pages,
+        domain=corpus.domain,
+        law_name=corpus.law_name,
+        source=corpus.filename,
+    )
     if not docs:
         logger.warning("文档没有产生有效条款: %s", file_path)
         return 0
