@@ -31,6 +31,11 @@ def _env_int(name: str, default: int) -> int:
     return int(raw) if raw else default
 
 
+def _env_float(name: str, default: float) -> float:
+    raw = os.environ.get(name)
+    return float(raw) if raw else default
+
+
 @dataclass(frozen=True)
 class Settings:
     project_root: Path = PROJECT_ROOT
@@ -44,17 +49,19 @@ class Settings:
     merged_model_dir: Path = field(default_factory=lambda: _env_path("AGENT_DISTILL_MERGED_MODEL_DIR", PROJECT_ROOT / "qwen_merged"))
     mcp_server_path: Path = field(default_factory=lambda: _env_path("AGENT_DISTILL_MCP_SERVER_PATH", PROJECT_ROOT / "mcp_service" / "server.py"))
 
-    # Phase 5/6 experiment model: Qwen3.5-4B Raw vs Qwen3.5-4B LoRA.
     qwen35_model_path: str = field(default_factory=lambda: _env("AGENT_DISTILL_QWEN35_MODEL_PATH", r"D:\py\models"))
     qwen35_lora_output_dir: Path = field(default_factory=lambda: _env_path("AGENT_DISTILL_QWEN35_LORA_OUTPUT_DIR", PROJECT_ROOT / "qwen35_lora"))
     qwen35_decision_lora_output_dir: Path = field(default_factory=lambda: _env_path("AGENT_DISTILL_QWEN35_DECISION_LORA_OUTPUT_DIR", PROJECT_ROOT / "qwen35_decision_lora"))
-    qwen35_answer_lora_output_dir: Path = field(default_factory=lambda: _env_path("AGENT_DISTILL_QWEN35_ANSWER_LORA_OUTPUT_DIR", PROJECT_ROOT / "qwen35_answer_lora"))
+    qwen35_answer_lora_output_dir: Path = field(default_factory=lambda: _env_path("AGENT_DISTILL_QWEN35_ANSWER_LORA_OUTPUT_DIR", PROJECT_ROOT / "distill" / "data" / "phase5_answer.jsonl"))
     phase5_decision_data_path: Path = field(default_factory=lambda: _env_path("AGENT_DISTILL_PHASE5_DECISION_DATA_PATH", PROJECT_ROOT / "distill" / "data" / "phase5_decision.jsonl"))
     phase5_answer_data_path: Path = field(default_factory=lambda: _env_path("AGENT_DISTILL_PHASE5_ANSWER_DATA_PATH", PROJECT_ROOT / "distill" / "data" / "phase5_answer.jsonl"))
 
     base_model_path: str = field(default_factory=lambda: _env("AGENT_DISTILL_BASE_MODEL_PATH", r"D:\py\Qwen2.5-1.5B"))
     embedding_model_name: str = field(default_factory=lambda: _env("AGENT_DISTILL_EMBEDDING_MODEL", "shibing624/text2vec-base-chinese"))
     reranker_model_name: Optional[str] = field(default_factory=lambda: _env("AGENT_DISTILL_RERANKER_MODEL"))
+    retrieval_min_score: float = field(default_factory=lambda: _env_float("AGENT_DISTILL_RETRIEVAL_MIN_SCORE", 0.45))
+    retrieval_candidate_multiplier: int = field(default_factory=lambda: _env_int("AGENT_DISTILL_RETRIEVAL_CANDIDATE_MULTIPLIER", 4))
+    retrieval_rerank: bool = field(default_factory=lambda: _env("AGENT_DISTILL_RETRIEVAL_RERANK", "1") == "1")
     deepseek_api_key: Optional[str] = field(default_factory=lambda: _env("DEEPSEEK_API_KEY"))
     deepseek_base_url: str = field(default_factory=lambda: _env("DEEPSEEK_BASE_URL", "https://api.deepseek.com"))
     deepseek_model: str = field(default_factory=lambda: _env("DEEPSEEK_MODEL", "deepseek-chat"))
