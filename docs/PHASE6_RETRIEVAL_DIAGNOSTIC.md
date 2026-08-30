@@ -4,78 +4,57 @@
 
 ## 1. 当前结论
 
-最新真实实验表明，`GTE-large-zh` 是当前检索 baseline。Rewrite 在原实现中采用“替换原查询”的方式，会伤害 #005 买卖合同，同时帮助 #006 借款；因此不能把 Rewrite 直接作为默认查询。
+当前 Retrieval 的主 baseline 是 `GTE-large-zh`。原始 Rewrite（直接替换 query）会伤害部分 case，因此已经改为 additive candidate expansion；Reranker 在当前实验中整体为负，默认关闭。
 
-用户报告的当前对比：
+最新关键发现：#007“楼上邻居漏水把我家天花板泡了”对应的 Gold 法条在 candidate pool 中都没有出现，因此 **Reranker 无法解决 #007**。问题已经被定性为 recall/index/query-representation 层，而不是 ranking 层。
 
-```text
-纯 GTE
-Precision@5 ≈ 0.171
-Recall@5    ≈ 0.786
-MRR         ≈ 0.452
-
-GTE + Rewrite（旧：替换查询）
-Precision@5 ≈ 0.143
-Recall@5    ≈ 0.643
-MRR         ≈ 0.381
-```
-
-逐样本：
-
-- #001 加班：Rewrite 不变；
-- #002 拖欠工资：Rewrite 不变；
-- #003 违法辞退：Rewrite 不变；
-- #004 社保：Rewrite 不变；
-- #005 买卖合同：纯 GTE 命中且排第 1，旧 Rewrite 造成 miss；
-- #006 借款：Rewrite 将正确法条提高到第 1；
-- #007 邻居漏水：所有组合仍 miss。
-
-因此最新策略是：
+用户最近实验给出的代表性结果：
 
 ```text
-GTE-large-zh = baseline
-Rewrite       = additive candidate expansion，不再替换原查询
-Reranker      = experimental only，不进入默认链路
-#007          = 仍是 recall/index hard case
+纯 GTE       Precision@5 ≈ 0.171  Recall@5 ≈ 0.786  MRR ≈ 0.452
+旧 Rewrite   Precision@5 ≈ 0.143  Recall@5 ≈ 0.643  MRR ≈ 0.381
 ```
 
-## 2. 本轮已完成
+GTE 对 #005 买卖合同、#006 借款均已有命中；#007 仍然是核心 hard case。
+
+## 2. 已完成
 
 ### Router
 
 - `unknown`/abstention；
 - labor/civil hard rules；
-- loan / debt / delivery / neighbor leakage 等 Civil 规则；
+- loan/debt/delivery/neighbor leakage 等 Civil 规则；
 - 条件 Graph 路由；
 - 基础 Router benchmark 能力。
 
-### Knowledge ingestion
+### Knowledge ingestion / index
 
 - whole-PDF article-aware splitting；
 - 跨页法条不因 page boundary 直接截断；
 - 相邻 `第X条` 独立切分；
 - normalized embeddings；
 - Chroma 显式 cosine metric；
-- 索引记录 embedding model 与 normalization 元数据。
+- 索引记录 embedding model 与 normalization 元数据；
+- GTE 独立 Chroma A/B 索引；
+- chapter/topic enrichment 已接入 embedding text；
+- 本阶段新增 article-level legal concept aliases。
 
 ### Retrieval
 
 - GTE-large-zh baseline；
-- 独立 embedding/chroma A/B；
 - candidate pool；
 - `distance` / diagnostic `score` / `rerank_score`；
 - optional hybrid；
 - optional CrossEncoder；
 - Civil query rewrite；
-- **本轮将 rewrite 从“替换 query”改成“原 query + 改写 query 双路召回后 union，按同一 chunk 的最大 embedding score 保留”**。
-
-这样可以避免 #005 这类原查询已经能准确召回的 case 因 rewrite 偏移而丢失，同时允许 #006 从改写查询获得额外候选。
+- additive original+rewrite candidate union：rewrite 不再有权删除原始 query 已找到的 candidate；
+- Retrieval benchmark 与 candidate-pool diagnostics。
 
 ### Citation / Verification
 
 - `retrieved_documents` 与 `citations` 分离；
 - citation 必须来自 retrieval evidence；
-- answer 中的法条编号必须与证据一致；
+- answer 中出现的法条编号必须可由 evidence 支撑；
 - non-legal 不进入法律检索；
 - 失败/空 answer 不进入正式 SFT。
 
@@ -90,108 +69,141 @@ Reranker      = experimental only，不进入默认链路
 
 ### Top-K
 
-此前实验：
-
-```text
-Top-5  Recall ≈ 0.571 / MRR ≈ 0.298
-Top-10 Recall ≈ 0.714 / MRR ≈ 0.313
-Top-20 Recall ≈ 0.714 / MRR ≈ 0.313
-```
-
-Top-10 → Top-20 无进一步收益，因此继续扩大 K 不是解决方案。
+Top-10 → Top-20 的 Recall/MRR 不再提升，继续扩大 K 不是核心解决方案。
 
 ### Embedding A/B
 
-GTE-large-zh 明显优于旧 text2vec baseline，并解决 #005 买卖合同 case；BGE-M3 在当前 benchmark 没有更好表现。
+GTE-large-zh 明显优于旧 text2vec baseline，并解决 #005 买卖合同 case；BGE-M3 在当前 benchmark 没有显示优势。
 
 ### Rewrite
 
-旧实现：
+旧实现：`query -> rewrite(query) -> 单次 retrieval`，整体为负。
 
-```text
-query -> rewrite(query) -> 单次 retrieval
-```
-
-结果对整体有负贡献，且 #005 从 hit 变成 miss。
-
-因此新实现：
+当前实现：
 
 ```text
 original query ─┐
-                ├─> candidate union -> best score per chunk -> ranking
+                ├─> candidate union -> 同 chunk 取最大 score -> ranking
 rewritten query ┘
 ```
 
-Rewrite 不再有权删除原查询已经找到的 candidate。
+这避免了 rewrite 语义偏移把原始命中删除。
 
 ### Reranker
 
-真实实验表明当前 CrossEncoder reranker 在整体上显著伤害 GTE：
+真实实验显示当前 CrossEncoder reranker 整体伤害 GTE，因此默认关闭。
 
 ```text
 GTE baseline       MRR ≈ 0.405, Recall ≈ 0.714
 GTE + reranker     MRR ≈ 0.179, Recall ≈ 0.429
 ```
 
-因此 reranker 目前不是默认方案。只有后续在更强 candidate pool、领域化或加权融合后证明有效，才重新考虑进入正式链路。
+更重要的是，#007 的 Gold 没有进入 candidate pool 时，任何 reranker 都不可能把它“召回”。
 
-## 4. 当前 hard cases
+## 4. 当前 hard case：#007 邻居漏水
 
-### #005 买卖合同逾期交货
-
-GTE 已经可以命中 `第五百七十七条`，所以不能再让 rewrite 破坏这个 case。后续以 regression test 保护。
-
-### #006 借款到期不还
-
-Rewrite 有帮助，说明口语 query 到法律概念之间存在表达 gap。新的 additive fusion 应保持原始命中，同时利用 rewrite candidate。
-
-### #007 邻居漏水
-
-多个 embedding / rewrite / reranker 组合均未稳定召回 `第一千一百六十五条` / `第一千一百八十四条`。
-
-这说明当前主要矛盾仍是 recall/index representation，而不是简单 ranking。
-
-下一步优先：
+问题：
 
 ```text
-法律主题/场景 metadata
-+
-语义增强的法条索引文本
-+
-必要时人工构造高质量 Civil hard-case query variants
+楼上邻居漏水把我家天花板泡了，可以要求赔偿吗？
 ```
 
-不能写死 `#007 -> 1165/1184` 这种 benchmark-specific 规则到生产 retriever。
-
-## 5. Embedding/index contract
-
-查询模型与 Chroma 必须完全一致：
-
-- 同一 `embedding_model`；
-- 同一 normalization；
-- 同一 `hnsw:space=cosine`；
-- 同一 collection；
-- 不同 embedding 使用不同 `chroma_db_dir`。
-
-当前 Retriever 会提前检查模型身份与维度，避免 Chroma 在 query 时才抛 768 vs 1024 之类的底层错误。
-
-## 6. Citation / verification 剩余问题
-
-当前 grounding 基础校验已经存在，但还没有完成真正的 semantic entailment：
+Gold：
 
 ```text
-citation 是否与回答中的具体主张一致？
+第一千一百六十五条
+第一千一百八十四条
 ```
 
-不能因为 `第X条` 出现在 answer 和 evidence 两边，就直接认为法律解释一定正确。
+candidate pool diagnostics 的结论：**Gold 不在 Reranker candidate pool 中**。
+
+因此正式定性：
+
+```text
+#007
+  ↓
+Top-K candidate recall 失败
+  ↓
+Reranker 无法解决
+```
+
+当前检索结果虽然围绕“侵权/建筑物/相邻关系”主题，但没有精确到一般侵权责任和财产损失赔偿条款。
+
+### 已做的下一层修复
+
+新增 `knowledge/legal_concepts.py`，为可审计的关键 Civil 条款增加 doctrinal retrieval aliases，例如：
+
+```text
+1165 → 一般侵权责任 / 过错责任 / 侵权行为 / 损害 / 赔偿责任
+1184 → 财产损失 / 财产损害赔偿 / 损失计算 / 侵权赔偿
+288  → 相邻关系 / 用水排水 / 不动产相邻关系
+```
+
+这些只是索引增强词，不参与答案生成，也不使用 benchmark question 作为标注。
+
+`knowledge/legal_chunker.py` 会把这些概念追加到 embedding-oriented retrieval text，并把 `legal_concepts` 写入 metadata，同时保留 `original_text`。
+
+**必须重新 ingest** 才能让这批新的向量生效。
+
+## 5. 下一步必须做的真实实验
+
+### P0：重建 GTE + concept-enriched index
+
+```powershell
+uv run python -m knowledge.ingest --reset --embedding-model "thenlper/gte-large-zh" --chroma-dir "knowledge/chroma_gte_large_zh"
+```
+
+### P0：重新跑 candidate-pool diagnostics
+
+```powershell
+uv run python -m evaluation.retrieval_diagnostics data/evaluation/retrieval_benchmark_v2.jsonl --candidate-k 50 --embedding-model "thenlper/gte-large-zh" --chroma-dir "knowledge/chroma_gte_large_zh" --output data/evaluation/candidate_pool_concept_v2.json
+```
+
+重点看：
+
+```text
+#005 gold_in_candidate_pool
+#006 gold_in_candidate_pool
+#007 gold_in_candidate_pool
+```
+
+### P1：重新跑 baseline
+
+确认 concept enrichment 有没有损伤 #001~#006：
+
+```powershell
+uv run python -m evaluation.retrieval_benchmark data/evaluation/retrieval_benchmark_v2.jsonl --top-k 5 --embedding-model "thenlper/gte-large-zh" --chroma-dir "knowledge/chroma_gte_large_zh"
+```
+
+### P1：再跑 additive rewrite
+
+```powershell
+uv run python -m evaluation.retrieval_benchmark data/evaluation/retrieval_benchmark_v2.jsonl --top-k 5 --rewrite --embedding-model "thenlper/gte-large-zh" --chroma-dir "knowledge/chroma_gte_large_zh"
+```
+
+## 6. 决策树
+
+```text
+#007 Gold 不在 Top-50
+    ↓
+继续优化 index / query representation
+
+#007 Gold 在 Top-50，但不在 Top-5
+    ↓
+才值得重新研究 rerank / hybrid ranking
+
+#007 Gold 进入 Top-5
+    ↓
+Retrieval P0 完成，进入 trajectory v2 验收
+```
 
 ## 7. 尚未完成
 
-1. GTE + additive rewrite 的完整 benchmark 尚未由用户重新跑出最终数字；
-2. #007 的 topic/scene index enhancement 尚未完成最终 A/B；
-3. Router benchmark 仍需扩充边界样本；
-4. Retrieval threshold 尚未校准；
-5. Reranker domain-specific / score fusion 尚未继续验证；
+1. concept-enriched GTE index 的真实 A/B 尚未跑完；
+2. #007 是否因此进入 Top-50/Top-5 尚未证明；
+3. Reranker 仍未作为默认方案；
+4. Router benchmark 仍需扩大边界和 non-legal 样本；
+5. Retrieval threshold 尚未校准；
 6. Citation semantic entailment 尚未完成；
 7. PDF 全量完整性审计尚未完成；
 8. trajectory v2 尚未经过 20~50 条人工抽样验收；
@@ -204,25 +216,28 @@ citation 是否与回答中的具体主张一致？
 - 不要因为 Top-K 增大而声称 retrieval 已修复；
 - 不要把 diagnostic score 当概率；
 - 不要在没有 A/B 的情况下宣称 reranker/hybrid/rewrite 有效；
-- 不要针对 #007 写硬编码特殊规则；
+- 不要针对 #007 写“问题文本 -> 第1165/1184条”的硬编码规则；
 - 不要用 LLM 自动补全文法条并回写知识库；
-- 不要让 rewrite 直接替换用户原 query；必须保持 original retrieval candidate。
+- 不要让 rewrite 直接替换用户原 query；
+- 不要在 candidate pool miss 时把问题归因给 reranker。
 
 ## 9. 下一 AI 最短路径
 
 ```text
 1. pytest -q
-2. 重建 GTE index（如 index 未包含最新 topic enrichment）
-3. baseline GTE
-4. GTE + additive rewrite
-5. 比较 #005/#006/#007
-6. 如果 #007 仍 Top-20 miss -> topic metadata / index enhancement
-7. Retrieval 达标后重新生成 trajectory v2
-8. filter/quarantine 失败样本
-9. 人工审核 20~50 条
-10. prepare_phase5_data
-11. Decision/Answer SFT
-12. Raw vs LoRA
+2. GTE concept-enriched ingest --reset
+3. candidate-pool diagnostics
+4. baseline retrieval
+5. additive rewrite retrieval
+6. 分析 #005/#006/#007
+7. 若 #007 仍 Top-50 miss → 扩展可审计 Civil ontology / scenario metadata
+8. 若 #007 Top-50 hit → 再研究 rerank
+9. Retrieval 达标后重新生成 trajectory v2
+10. filter/quarantine
+11. 人工审核 20~50 条
+12. prepare_phase5_data
+13. Decision/Answer SFT
+14. Raw vs LoRA
 ```
 
 ## 10. 分支与数据
