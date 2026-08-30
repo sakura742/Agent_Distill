@@ -34,6 +34,18 @@ def _refs(state: dict[str, Any]) -> list[str]:
     return [d.get("reference", "") for d in docs if isinstance(d, dict) and d.get("reference")]
 
 
+def _citation_details(state: dict[str, Any]) -> list[dict[str, str]]:
+    """跟 _refs() 取同一份数据，但保留 content 正文。_refs() 只取 reference 头部
+    存进结果文件，导致核对 gold 标签时无法回看检索到的法条原文，只能重新
+    跑一遍 benchmark 才能拿到内容——这里把正文也存下来，避免下次再遇到
+    同样的问题。"""
+    docs = state.get("retrieved_documents") or state.get("citations") or []
+    return [
+        {"reference": d.get("reference", ""), "content": d.get("content", "")}
+        for d in docs if isinstance(d, dict) and d.get("reference")
+    ]
+
+
 class CategoryAwareGenerator:
     """按 case 类别决定是否需要真实调用 Qwen3.5 生成。
 
@@ -94,6 +106,7 @@ def run(model_name: str, model_path: str, adapter: str | None, rows: list[dict[s
             "route_prediction": state.get("domain"),
             "tool_prediction": {"name": state.get("tool_name"), "arguments": state.get("tool_arguments", {})},
             "retrieved": _refs(state), "citations": _refs(state),
+            "citation_details": _citation_details(state),
             "verification": state.get("verification", {}), "trace": state.get("trace", []),
             "retry_count": state.get("retry_count", 0), "error": error, "latency_ms": latency,
         })

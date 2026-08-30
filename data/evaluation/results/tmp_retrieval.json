@@ -1,0 +1,613 @@
+{
+  "model": "Qwen3.5-4B Raw",
+  "model_path": "D:\\py\\models",
+  "adapter_path": null,
+  "metrics": {
+    "retrieval_recall_at_5": 0.0,
+    "retrieval_mrr": 0.0,
+    "avg_latency_ms": 912.1633333333334,
+    "error_rate": 0.0
+  },
+  "predictions": [
+    {
+      "id": "retrieval-001",
+      "category": "retrieval",
+      "question": "检索劳动法中关于加班工资的依据",
+      "gold": [
+        "labor_overtime_regulation"
+      ],
+      "prediction": "根据检索到的法律依据，建议结合以下条款进一步判断：\n\n[中华人民共和国劳动法及相关法律 五十一 | labor_law.pdf p.11]\n第五十一条\n劳动者在法定休假日和婚丧假期间以及依法\n参加社会活动期间，用人单位应当依法支付工资。\n\n[中华人民共和国劳动法及相关法律 九十一 | labor_law.pdf p.18]\n第九十一条\n用人单位有下列侵害劳动者合法权益情形之\n一的，由劳动行政部门责令支付劳动者的工资报酬、经济补偿，\n并可以责令支付赔偿金：\n（一）克扣或者无故拖欠劳动者工资的；\n\n[中华人民共和国劳动法及相关法律 四十四 | labor_law.pdf p.10]\n第四十四条\n有下列情形之一的，用人单位应当按照下列标\n准支付高于劳动者正常工作时间工资的工资报酬：\n（一）安排劳动者延长工作时间的，支付不低于工资的百分\n之一百五十的工资报酬；\n（二）休息日安排劳动者工作又不能安排补休的，支付不低\n于工资的百分之二百的工资报酬；\n（三）法定休假日安排劳动者工作的，支付不低于工资的百\n分之三百的工资报酬。\n\n[中华人民共和国劳动法及相关法律  | labor_law.pdf p.21]\n—21—\n第一百零四条\n国家工作人员和社会保险基金经办机构的\n工作人员挪用社会保险基金，构成犯罪的，依法追究刑事责任。\n第一百零五条\n违反本法规定侵害劳动者合法权益，其他法\n律、行政法规已规定处罚的，依照该法律、行政法规的规定处罚。\n第十三章\n附则\n第一百零六条\n省、自治区、直辖市人民政府根据本法和本\n地区的实际情况，规定劳动合同制度的实施步骤，报国务院备案。\n第一百零七条\n本法自1995 年1 月1 日起施行。\n\n[中华人民共和国劳动法及相关法律 三十六 | labor_law.pdf p.9]\n第三十六条规定的工时制度合理确定其劳动定额和计件报\n酬标准。",
+      "route_prediction": "labor",
+      "tool_prediction": {
+        "name": "search_labor_law",
+        "arguments": {
+          "query": "检索劳动法中关于加班工资的依据",
+          "limit": 5
+        }
+      },
+      "retrieved": [
+        "中华人民共和国劳动法及相关法律 五十一 | labor_law.pdf p.11",
+        "中华人民共和国劳动法及相关法律 九十一 | labor_law.pdf p.18",
+        "中华人民共和国劳动法及相关法律 四十四 | labor_law.pdf p.10",
+        "中华人民共和国劳动法及相关法律  | labor_law.pdf p.21",
+        "中华人民共和国劳动法及相关法律 三十六 | labor_law.pdf p.9"
+      ],
+      "citations": [
+        "中华人民共和国劳动法及相关法律 五十一 | labor_law.pdf p.11",
+        "中华人民共和国劳动法及相关法律 九十一 | labor_law.pdf p.18",
+        "中华人民共和国劳动法及相关法律 四十四 | labor_law.pdf p.10",
+        "中华人民共和国劳动法及相关法律  | labor_law.pdf p.21",
+        "中华人民共和国劳动法及相关法律 三十六 | labor_law.pdf p.9"
+      ],
+      "citation_details": [
+        {
+          "reference": "中华人民共和国劳动法及相关法律 五十一 | labor_law.pdf p.11",
+          "content": "第五十一条\n劳动者在法定休假日和婚丧假期间以及依法\n参加社会活动期间，用人单位应当依法支付工资。"
+        },
+        {
+          "reference": "中华人民共和国劳动法及相关法律 九十一 | labor_law.pdf p.18",
+          "content": "第九十一条\n用人单位有下列侵害劳动者合法权益情形之\n一的，由劳动行政部门责令支付劳动者的工资报酬、经济补偿，\n并可以责令支付赔偿金：\n（一）克扣或者无故拖欠劳动者工资的；"
+        },
+        {
+          "reference": "中华人民共和国劳动法及相关法律 四十四 | labor_law.pdf p.10",
+          "content": "第四十四条\n有下列情形之一的，用人单位应当按照下列标\n准支付高于劳动者正常工作时间工资的工资报酬：\n（一）安排劳动者延长工作时间的，支付不低于工资的百分\n之一百五十的工资报酬；\n（二）休息日安排劳动者工作又不能安排补休的，支付不低\n于工资的百分之二百的工资报酬；\n（三）法定休假日安排劳动者工作的，支付不低于工资的百\n分之三百的工资报酬。"
+        },
+        {
+          "reference": "中华人民共和国劳动法及相关法律  | labor_law.pdf p.21",
+          "content": "—21—\n第一百零四条\n国家工作人员和社会保险基金经办机构的\n工作人员挪用社会保险基金，构成犯罪的，依法追究刑事责任。\n第一百零五条\n违反本法规定侵害劳动者合法权益，其他法\n律、行政法规已规定处罚的，依照该法律、行政法规的规定处罚。\n第十三章\n附则\n第一百零六条\n省、自治区、直辖市人民政府根据本法和本\n地区的实际情况，规定劳动合同制度的实施步骤，报国务院备案。\n第一百零七条\n本法自1995 年1 月1 日起施行。"
+        },
+        {
+          "reference": "中华人民共和国劳动法及相关法律 三十六 | labor_law.pdf p.9",
+          "content": "第三十六条规定的工时制度合理确定其劳动定额和计件报\n酬标准。"
+        }
+      ],
+      "verification": {
+        "passed": true,
+        "citation_count": 5,
+        "reason": "answer_and_citations_present"
+      },
+      "trace": [
+        {
+          "node": "intent_analysis",
+          "method": "rule",
+          "domain": "labor"
+        },
+        {
+          "node": "task_planning",
+          "steps": [
+            "route_to_domain_tool",
+            "retrieve_legal_basis",
+            "generate_answer",
+            "verify_answer"
+          ]
+        },
+        {
+          "node": "tool_decision",
+          "tool": "search_labor_law"
+        },
+        {
+          "node": "tool_execution",
+          "tool": "search_labor_law",
+          "status": "success"
+        },
+        {
+          "node": "retrieval",
+          "documents": 5
+        },
+        {
+          "node": "generation",
+          "answer_length": 786
+        },
+        {
+          "node": "verification",
+          "passed": true,
+          "citation_count": 5,
+          "reason": "answer_and_citations_present"
+        }
+      ],
+      "retry_count": 0,
+      "error": null,
+      "latency_ms": 4459.64
+    },
+    {
+      "id": "retrieval-002",
+      "category": "retrieval",
+      "question": "检索民法典中关于借款纠纷的依据",
+      "gold": [
+        "civil_loan_regulation"
+      ],
+      "prediction": "根据检索到的法律依据，建议结合以下条款进一步判断：\n\n[中华人民共和国民法典 六百七十九 | minfa.pdf p.133]\n第六百七十九条\n自然人之间的借款合同，自贷款人提供借款时成立。\n\n[中华人民共和国民法典 六百六十八 | minfa.pdf p.132]\n第六百六十八条\n借款合同应当采用书面形式，但是自然人之间借款另有约\n定的除外。\n借款合同的内容一般包括借款种类、币种、用途、数额、利率、期限和还款\n方式等条款。\n\n[中华人民共和国民法典 一百一十八 | minfa.pdf p.28]\n第一百一十八条\n民事主体依法享有债权。\n债权是因合同、侵权行为、无因管理、不当得利以及法律的其他规定，权利\n人请求特定义务人为或者不为一定行为的权利。\n\n[中华人民共和国民法典 六百六十九 | minfa.pdf p.132]\n第六百六十九条\n订立借款合同，借款人应当按照贷款人的要求提供与借款\n有关的业务活动和财务状况的真实情况。\n\n[中华人民共和国民法典 四百六十七 | minfa.pdf p.92]\n第四百六十七条\n本法或者其他法律没有明文规定的合同，适用本编通则的\n规定，并可以参照适用本编或者其他法律最相类似合同的规定。\n在中华人民共和国境内履行的中外合资经营企业合同、中外合作经营企业合\n同、中外合作勘探开发自然资源合同，适用中华人民共和国法律。",
+      "route_prediction": "civil",
+      "tool_prediction": {
+        "name": "search_civil_law",
+        "arguments": {
+          "query": "检索民法典中关于借款纠纷的依据",
+          "limit": 5
+        }
+      },
+      "retrieved": [
+        "中华人民共和国民法典 六百七十九 | minfa.pdf p.133",
+        "中华人民共和国民法典 六百六十八 | minfa.pdf p.132",
+        "中华人民共和国民法典 一百一十八 | minfa.pdf p.28",
+        "中华人民共和国民法典 六百六十九 | minfa.pdf p.132",
+        "中华人民共和国民法典 四百六十七 | minfa.pdf p.92"
+      ],
+      "citations": [
+        "中华人民共和国民法典 六百七十九 | minfa.pdf p.133",
+        "中华人民共和国民法典 六百六十八 | minfa.pdf p.132",
+        "中华人民共和国民法典 一百一十八 | minfa.pdf p.28",
+        "中华人民共和国民法典 六百六十九 | minfa.pdf p.132",
+        "中华人民共和国民法典 四百六十七 | minfa.pdf p.92"
+      ],
+      "citation_details": [
+        {
+          "reference": "中华人民共和国民法典 六百七十九 | minfa.pdf p.133",
+          "content": "第六百七十九条\n自然人之间的借款合同，自贷款人提供借款时成立。"
+        },
+        {
+          "reference": "中华人民共和国民法典 六百六十八 | minfa.pdf p.132",
+          "content": "第六百六十八条\n借款合同应当采用书面形式，但是自然人之间借款另有约\n定的除外。\n借款合同的内容一般包括借款种类、币种、用途、数额、利率、期限和还款\n方式等条款。"
+        },
+        {
+          "reference": "中华人民共和国民法典 一百一十八 | minfa.pdf p.28",
+          "content": "第一百一十八条\n民事主体依法享有债权。\n债权是因合同、侵权行为、无因管理、不当得利以及法律的其他规定，权利\n人请求特定义务人为或者不为一定行为的权利。"
+        },
+        {
+          "reference": "中华人民共和国民法典 六百六十九 | minfa.pdf p.132",
+          "content": "第六百六十九条\n订立借款合同，借款人应当按照贷款人的要求提供与借款\n有关的业务活动和财务状况的真实情况。"
+        },
+        {
+          "reference": "中华人民共和国民法典 四百六十七 | minfa.pdf p.92",
+          "content": "第四百六十七条\n本法或者其他法律没有明文规定的合同，适用本编通则的\n规定，并可以参照适用本编或者其他法律最相类似合同的规定。\n在中华人民共和国境内履行的中外合资经营企业合同、中外合作经营企业合\n同、中外合作勘探开发自然资源合同，适用中华人民共和国法律。"
+        }
+      ],
+      "verification": {
+        "passed": true,
+        "citation_count": 5,
+        "reason": "answer_and_citations_present"
+      },
+      "trace": [
+        {
+          "node": "intent_analysis",
+          "method": "rule",
+          "domain": "civil"
+        },
+        {
+          "node": "task_planning",
+          "steps": [
+            "route_to_domain_tool",
+            "retrieve_legal_basis",
+            "generate_answer",
+            "verify_answer"
+          ]
+        },
+        {
+          "node": "tool_decision",
+          "tool": "search_civil_law"
+        },
+        {
+          "node": "tool_execution",
+          "tool": "search_civil_law",
+          "status": "success"
+        },
+        {
+          "node": "retrieval",
+          "documents": 5
+        },
+        {
+          "node": "generation",
+          "answer_length": 582
+        },
+        {
+          "node": "verification",
+          "passed": true,
+          "citation_count": 5,
+          "reason": "answer_and_citations_present"
+        }
+      ],
+      "retry_count": 0,
+      "error": null,
+      "latency_ms": 63.04
+    },
+    {
+      "id": "retrieval-003",
+      "category": "retrieval",
+      "question": "检索劳动合同解除相关依据",
+      "gold": [
+        "labor_termination_regulation"
+      ],
+      "prediction": "根据检索到的法律依据，建议结合以下条款进一步判断：\n\n[中华人民共和国劳动法及相关法律 三十 | labor_law.pdf p.7]\n第三十条\n用人单位解除劳动合同，工会认为不适当的，有\n权提出意见。如果用人单位违反法律、法规或者劳动合同，工会\n\n[中华人民共和国劳动法及相关法律 二十七 | labor_law.pdf p.7]\n第二十七条的规定解除劳动合同的，应当依照国家有关规定给予\n经济补偿。\n\n[中华人民共和国劳动法及相关法律 二十四 | labor_law.pdf p.6]\n第二十四条\n经劳动合同当事人协商一致，劳动合同可以解\n除。\n\n[中华人民共和国劳动法及相关法律 九十八 | labor_law.pdf p.20]\n第九十八条\n用人单位违反本法规定的条件解除劳动合同\n或者故意拖延不订立劳动合同的，由劳动行政部门责令改正；对\n劳动者造成损害的，应当承担赔偿责任。\n\n[中华人民共和国劳动法及相关法律 三十二 | labor_law.pdf p.8]\n第三十二条\n有下列情形之一的，劳动者可以随时通知用人\n单位解除劳动合同：\n（一）在试用期内的；\n（二）用人单位以暴力、威胁或者非法限制人身自由的手段\n强迫劳动的；\n（三）用人单位未按照劳动合同约定支付劳动报酬或者提供\n劳动条件的。",
+      "route_prediction": "labor",
+      "tool_prediction": {
+        "name": "search_labor_law",
+        "arguments": {
+          "query": "检索劳动合同解除相关依据",
+          "limit": 5
+        }
+      },
+      "retrieved": [
+        "中华人民共和国劳动法及相关法律 三十 | labor_law.pdf p.7",
+        "中华人民共和国劳动法及相关法律 二十七 | labor_law.pdf p.7",
+        "中华人民共和国劳动法及相关法律 二十四 | labor_law.pdf p.6",
+        "中华人民共和国劳动法及相关法律 九十八 | labor_law.pdf p.20",
+        "中华人民共和国劳动法及相关法律 三十二 | labor_law.pdf p.8"
+      ],
+      "citations": [
+        "中华人民共和国劳动法及相关法律 三十 | labor_law.pdf p.7",
+        "中华人民共和国劳动法及相关法律 二十七 | labor_law.pdf p.7",
+        "中华人民共和国劳动法及相关法律 二十四 | labor_law.pdf p.6",
+        "中华人民共和国劳动法及相关法律 九十八 | labor_law.pdf p.20",
+        "中华人民共和国劳动法及相关法律 三十二 | labor_law.pdf p.8"
+      ],
+      "citation_details": [
+        {
+          "reference": "中华人民共和国劳动法及相关法律 三十 | labor_law.pdf p.7",
+          "content": "第三十条\n用人单位解除劳动合同，工会认为不适当的，有\n权提出意见。如果用人单位违反法律、法规或者劳动合同，工会"
+        },
+        {
+          "reference": "中华人民共和国劳动法及相关法律 二十七 | labor_law.pdf p.7",
+          "content": "第二十七条的规定解除劳动合同的，应当依照国家有关规定给予\n经济补偿。"
+        },
+        {
+          "reference": "中华人民共和国劳动法及相关法律 二十四 | labor_law.pdf p.6",
+          "content": "第二十四条\n经劳动合同当事人协商一致，劳动合同可以解\n除。"
+        },
+        {
+          "reference": "中华人民共和国劳动法及相关法律 九十八 | labor_law.pdf p.20",
+          "content": "第九十八条\n用人单位违反本法规定的条件解除劳动合同\n或者故意拖延不订立劳动合同的，由劳动行政部门责令改正；对\n劳动者造成损害的，应当承担赔偿责任。"
+        },
+        {
+          "reference": "中华人民共和国劳动法及相关法律 三十二 | labor_law.pdf p.8",
+          "content": "第三十二条\n有下列情形之一的，劳动者可以随时通知用人\n单位解除劳动合同：\n（一）在试用期内的；\n（二）用人单位以暴力、威胁或者非法限制人身自由的手段\n强迫劳动的；\n（三）用人单位未按照劳动合同约定支付劳动报酬或者提供\n劳动条件的。"
+        }
+      ],
+      "verification": {
+        "passed": true,
+        "citation_count": 5,
+        "reason": "answer_and_citations_present"
+      },
+      "trace": [
+        {
+          "node": "intent_analysis",
+          "method": "rule",
+          "domain": "labor"
+        },
+        {
+          "node": "task_planning",
+          "steps": [
+            "route_to_domain_tool",
+            "retrieve_legal_basis",
+            "generate_answer",
+            "verify_answer"
+          ]
+        },
+        {
+          "node": "tool_decision",
+          "tool": "search_labor_law"
+        },
+        {
+          "node": "tool_execution",
+          "tool": "search_labor_law",
+          "status": "success"
+        },
+        {
+          "node": "retrieval",
+          "documents": 5
+        },
+        {
+          "node": "generation",
+          "answer_length": 551
+        },
+        {
+          "node": "verification",
+          "passed": true,
+          "citation_count": 5,
+          "reason": "answer_and_citations_present"
+        }
+      ],
+      "retry_count": 0,
+      "error": null,
+      "latency_ms": 90.3
+    },
+    {
+      "id": "retrieval-004",
+      "category": "retrieval",
+      "question": "检索租赁合同违约责任相关依据",
+      "gold": [
+        "civil_lease_regulation"
+      ],
+      "prediction": "根据检索到的法律依据，建议结合以下条款进一步判断：\n\n[中华人民共和国民法典 七百三十六 | minfa.pdf p.144]\n第七百三十六条\n融资租赁合同的内容一般包括租赁物的名称、数量、规\n格、技术性能、检验方法，租赁期限，租金构成及其支付期限和方式、币种，租\n赁期限届满租赁物的归属等条款。\n融资租赁合同应当采用书面形式。\n\n[中华人民共和国民法典 四百五十八 | minfa.pdf p.91]\n第四百五十八条\n基于合同关系等产生的占有，有关不动产或者动产的使\n用、收益、违约责任等，按照合同约定；合同没有约定或者约定不明确的，依照\n有关法律规定。\n\n[中华人民共和国民法典 七百一十一 | minfa.pdf p.139]\n第七百一十一条\n承租人未按照约定的方法或者未根据租赁物的性质使用租\n赁物，致使租赁物受到损失的，出租人可以解除合同并请求赔偿损失。\n\n[中华人民共和国民法典 七百二十四 | minfa.pdf p.142]\n第七百二十四条\n有下列情形之一，非因承租人原因致使租赁物无法使用\n的，承租人可以解除合同：\n（一）租赁物被司法机关或者行政机关依法查封、扣押；\n（二）租赁物权属有争议；\n（三）租赁物具有违反法律、行政法规关于使用条件的强制性规定情形。\n\n[中华人民共和国民法典 七百四十三 | minfa.pdf p.145]\n第七百四十三条\n出租人有下列情形之一，致使承租人对出卖人行使索赔权\n利失败的，承租人有权请求出租人承担相应的责任：\n（一）明知租赁物有质量瑕疵而不告知承租人；\n（二）承租人行使索赔权利时，未及时提供必要协助。\n出租人怠于行使只能由其对出卖人行使的索赔权利，造成承租人损失的，承\n租人有权请求出租人承担赔偿责任。",
+      "route_prediction": "civil",
+      "tool_prediction": {
+        "name": "search_civil_law",
+        "arguments": {
+          "query": "检索租赁合同违约责任相关依据",
+          "limit": 5
+        }
+      },
+      "retrieved": [
+        "中华人民共和国民法典 七百三十六 | minfa.pdf p.144",
+        "中华人民共和国民法典 四百五十八 | minfa.pdf p.91",
+        "中华人民共和国民法典 七百一十一 | minfa.pdf p.139",
+        "中华人民共和国民法典 七百二十四 | minfa.pdf p.142",
+        "中华人民共和国民法典 七百四十三 | minfa.pdf p.145"
+      ],
+      "citations": [
+        "中华人民共和国民法典 七百三十六 | minfa.pdf p.144",
+        "中华人民共和国民法典 四百五十八 | minfa.pdf p.91",
+        "中华人民共和国民法典 七百一十一 | minfa.pdf p.139",
+        "中华人民共和国民法典 七百二十四 | minfa.pdf p.142",
+        "中华人民共和国民法典 七百四十三 | minfa.pdf p.145"
+      ],
+      "citation_details": [
+        {
+          "reference": "中华人民共和国民法典 七百三十六 | minfa.pdf p.144",
+          "content": "第七百三十六条\n融资租赁合同的内容一般包括租赁物的名称、数量、规\n格、技术性能、检验方法，租赁期限，租金构成及其支付期限和方式、币种，租\n赁期限届满租赁物的归属等条款。\n融资租赁合同应当采用书面形式。"
+        },
+        {
+          "reference": "中华人民共和国民法典 四百五十八 | minfa.pdf p.91",
+          "content": "第四百五十八条\n基于合同关系等产生的占有，有关不动产或者动产的使\n用、收益、违约责任等，按照合同约定；合同没有约定或者约定不明确的，依照\n有关法律规定。"
+        },
+        {
+          "reference": "中华人民共和国民法典 七百一十一 | minfa.pdf p.139",
+          "content": "第七百一十一条\n承租人未按照约定的方法或者未根据租赁物的性质使用租\n赁物，致使租赁物受到损失的，出租人可以解除合同并请求赔偿损失。"
+        },
+        {
+          "reference": "中华人民共和国民法典 七百二十四 | minfa.pdf p.142",
+          "content": "第七百二十四条\n有下列情形之一，非因承租人原因致使租赁物无法使用\n的，承租人可以解除合同：\n（一）租赁物被司法机关或者行政机关依法查封、扣押；\n（二）租赁物权属有争议；\n（三）租赁物具有违反法律、行政法规关于使用条件的强制性规定情形。"
+        },
+        {
+          "reference": "中华人民共和国民法典 七百四十三 | minfa.pdf p.145",
+          "content": "第七百四十三条\n出租人有下列情形之一，致使承租人对出卖人行使索赔权\n利失败的，承租人有权请求出租人承担相应的责任：\n（一）明知租赁物有质量瑕疵而不告知承租人；\n（二）承租人行使索赔权利时，未及时提供必要协助。\n出租人怠于行使只能由其对出卖人行使的索赔权利，造成承租人损失的，承\n租人有权请求出租人承担赔偿责任。"
+        }
+      ],
+      "verification": {
+        "passed": true,
+        "citation_count": 5,
+        "reason": "answer_and_citations_present"
+      },
+      "trace": [
+        {
+          "node": "intent_analysis",
+          "method": "rule",
+          "domain": "civil"
+        },
+        {
+          "node": "task_planning",
+          "steps": [
+            "route_to_domain_tool",
+            "retrieve_legal_basis",
+            "generate_answer",
+            "verify_answer"
+          ]
+        },
+        {
+          "node": "tool_decision",
+          "tool": "search_civil_law"
+        },
+        {
+          "node": "tool_execution",
+          "tool": "search_civil_law",
+          "status": "success"
+        },
+        {
+          "node": "retrieval",
+          "documents": 5
+        },
+        {
+          "node": "generation",
+          "answer_length": 732
+        },
+        {
+          "node": "verification",
+          "passed": true,
+          "citation_count": 5,
+          "reason": "answer_and_citations_present"
+        }
+      ],
+      "retry_count": 0,
+      "error": null,
+      "latency_ms": 24.53
+    },
+    {
+      "id": "retrieval-005",
+      "category": "retrieval",
+      "question": "检索劳动报酬支付相关依据",
+      "gold": [
+        "labor_wage_regulation"
+      ],
+      "prediction": "根据检索到的法律依据，建议结合以下条款进一步判断：\n\n[中华人民共和国劳动法及相关法律 三十六 | labor_law.pdf p.9]\n第三十六条规定的工时制度合理确定其劳动定额和计件报\n酬标准。\n\n[中华人民共和国劳动法及相关法律 四十七 | labor_law.pdf p.11]\n第四十七条\n用人单位根据本单位的生产经营特点和经济\n效益，依法自主确定本单位的工资分配方式和工资水平。\n\n[中华人民共和国劳动法及相关法律 二 | labor_law.pdf p.2]\n第二条\n在中华人民共和国境内的企业、个体经济组织（以\n下统称用人单位）和与之形成劳动关系的劳动者，适用本法。\n国家机关、事业组织、社会团体和与之建立劳动合同关系的\n劳动者，依照本法执行。\n\n[中华人民共和国劳动法及相关法律 十九 | labor_law.pdf p.5]\n第十九条\n劳动合同应当以书面形式订立，并具备以下条款：\n（一）劳动合同期限；\n（二）工作内容；\n（三）劳动保护和劳动条件；\n（四）劳动报酬；\n（五）劳动纪律；\n（六）劳动合同终止的条件；\n（七）违反劳动合同的责任。\n劳动合同除前款规定的必备条款外，当事人可以协商约定其\n他内容。\n\n[中华人民共和国劳动法及相关法律 五十一 | labor_law.pdf p.11]\n第五十一条\n劳动者在法定休假日和婚丧假期间以及依法\n参加社会活动期间，用人单位应当依法支付工资。",
+      "route_prediction": "labor",
+      "tool_prediction": {
+        "name": "search_labor_law",
+        "arguments": {
+          "query": "检索劳动报酬支付相关依据",
+          "limit": 5
+        }
+      },
+      "retrieved": [
+        "中华人民共和国劳动法及相关法律 三十六 | labor_law.pdf p.9",
+        "中华人民共和国劳动法及相关法律 四十七 | labor_law.pdf p.11",
+        "中华人民共和国劳动法及相关法律 二 | labor_law.pdf p.2",
+        "中华人民共和国劳动法及相关法律 十九 | labor_law.pdf p.5",
+        "中华人民共和国劳动法及相关法律 五十一 | labor_law.pdf p.11"
+      ],
+      "citations": [
+        "中华人民共和国劳动法及相关法律 三十六 | labor_law.pdf p.9",
+        "中华人民共和国劳动法及相关法律 四十七 | labor_law.pdf p.11",
+        "中华人民共和国劳动法及相关法律 二 | labor_law.pdf p.2",
+        "中华人民共和国劳动法及相关法律 十九 | labor_law.pdf p.5",
+        "中华人民共和国劳动法及相关法律 五十一 | labor_law.pdf p.11"
+      ],
+      "citation_details": [
+        {
+          "reference": "中华人民共和国劳动法及相关法律 三十六 | labor_law.pdf p.9",
+          "content": "第三十六条规定的工时制度合理确定其劳动定额和计件报\n酬标准。"
+        },
+        {
+          "reference": "中华人民共和国劳动法及相关法律 四十七 | labor_law.pdf p.11",
+          "content": "第四十七条\n用人单位根据本单位的生产经营特点和经济\n效益，依法自主确定本单位的工资分配方式和工资水平。"
+        },
+        {
+          "reference": "中华人民共和国劳动法及相关法律 二 | labor_law.pdf p.2",
+          "content": "第二条\n在中华人民共和国境内的企业、个体经济组织（以\n下统称用人单位）和与之形成劳动关系的劳动者，适用本法。\n国家机关、事业组织、社会团体和与之建立劳动合同关系的\n劳动者，依照本法执行。"
+        },
+        {
+          "reference": "中华人民共和国劳动法及相关法律 十九 | labor_law.pdf p.5",
+          "content": "第十九条\n劳动合同应当以书面形式订立，并具备以下条款：\n（一）劳动合同期限；\n（二）工作内容；\n（三）劳动保护和劳动条件；\n（四）劳动报酬；\n（五）劳动纪律；\n（六）劳动合同终止的条件；\n（七）违反劳动合同的责任。\n劳动合同除前款规定的必备条款外，当事人可以协商约定其\n他内容。"
+        },
+        {
+          "reference": "中华人民共和国劳动法及相关法律 五十一 | labor_law.pdf p.11",
+          "content": "第五十一条\n劳动者在法定休假日和婚丧假期间以及依法\n参加社会活动期间，用人单位应当依法支付工资。"
+        }
+      ],
+      "verification": {
+        "passed": true,
+        "citation_count": 5,
+        "reason": "answer_and_citations_present"
+      },
+      "trace": [
+        {
+          "node": "intent_analysis",
+          "method": "rule",
+          "domain": "labor"
+        },
+        {
+          "node": "task_planning",
+          "steps": [
+            "route_to_domain_tool",
+            "retrieve_legal_basis",
+            "generate_answer",
+            "verify_answer"
+          ]
+        },
+        {
+          "node": "tool_decision",
+          "tool": "search_labor_law"
+        },
+        {
+          "node": "tool_execution",
+          "tool": "search_labor_law",
+          "status": "success"
+        },
+        {
+          "node": "retrieval",
+          "documents": 5
+        },
+        {
+          "node": "generation",
+          "answer_length": 605
+        },
+        {
+          "node": "verification",
+          "passed": true,
+          "citation_count": 5,
+          "reason": "answer_and_citations_present"
+        }
+      ],
+      "retry_count": 0,
+      "error": null,
+      "latency_ms": 25.97
+    },
+    {
+      "id": "retrieval-006",
+      "category": "retrieval",
+      "question": "检索民间借贷诉讼相关依据",
+      "gold": [
+        "civil_loan_regulation"
+      ],
+      "prediction": "根据检索到的法律依据，建议结合以下条款进一步判断：\n\n[中华人民共和国民法典 一百七十六 | minfa.pdf p.39]\n第一百七十六条\n民事主体依照法律规定或者按照当事人约定，履行民事义\n务，承担民事责任。\n\n[中华人民共和国民法典 四百六十七 | minfa.pdf p.92]\n第四百六十七条\n本法或者其他法律没有明文规定的合同，适用本编通则的\n规定，并可以参照适用本编或者其他法律最相类似合同的规定。\n在中华人民共和国境内履行的中外合资经营企业合同、中外合作经营企业合\n同、中外合作勘探开发自然资源合同，适用中华人民共和国法律。\n\n[中华人民共和国民法典 二百一十二 | minfa.pdf p.46]\n第二百一十二条\n登记机构应当履行下列职责：\n（一）查验申请人提供的权属证明和其他必要材料；\n（二）就有关登记事项询问申请人；\n（三）如实、及时登记有关事项；\n\n[中华人民共和国民法典 二百一十八 | minfa.pdf p.48]\n第二百一十八条\n权利人、利害关系人可以申请查询、复制不动产登记资\n料，登记机构应当提供。\n\n[中华人民共和国民法典 六百六十九 | minfa.pdf p.132]\n第六百六十九条\n订立借款合同，借款人应当按照贷款人的要求提供与借款\n有关的业务活动和财务状况的真实情况。",
+      "route_prediction": "civil",
+      "tool_prediction": {
+        "name": "search_civil_law",
+        "arguments": {
+          "query": "检索民间借贷诉讼相关依据",
+          "limit": 5
+        }
+      },
+      "retrieved": [
+        "中华人民共和国民法典 一百七十六 | minfa.pdf p.39",
+        "中华人民共和国民法典 四百六十七 | minfa.pdf p.92",
+        "中华人民共和国民法典 二百一十二 | minfa.pdf p.46",
+        "中华人民共和国民法典 二百一十八 | minfa.pdf p.48",
+        "中华人民共和国民法典 六百六十九 | minfa.pdf p.132"
+      ],
+      "citations": [
+        "中华人民共和国民法典 一百七十六 | minfa.pdf p.39",
+        "中华人民共和国民法典 四百六十七 | minfa.pdf p.92",
+        "中华人民共和国民法典 二百一十二 | minfa.pdf p.46",
+        "中华人民共和国民法典 二百一十八 | minfa.pdf p.48",
+        "中华人民共和国民法典 六百六十九 | minfa.pdf p.132"
+      ],
+      "citation_details": [
+        {
+          "reference": "中华人民共和国民法典 一百七十六 | minfa.pdf p.39",
+          "content": "第一百七十六条\n民事主体依照法律规定或者按照当事人约定，履行民事义\n务，承担民事责任。"
+        },
+        {
+          "reference": "中华人民共和国民法典 四百六十七 | minfa.pdf p.92",
+          "content": "第四百六十七条\n本法或者其他法律没有明文规定的合同，适用本编通则的\n规定，并可以参照适用本编或者其他法律最相类似合同的规定。\n在中华人民共和国境内履行的中外合资经营企业合同、中外合作经营企业合\n同、中外合作勘探开发自然资源合同，适用中华人民共和国法律。"
+        },
+        {
+          "reference": "中华人民共和国民法典 二百一十二 | minfa.pdf p.46",
+          "content": "第二百一十二条\n登记机构应当履行下列职责：\n（一）查验申请人提供的权属证明和其他必要材料；\n（二）就有关登记事项询问申请人；\n（三）如实、及时登记有关事项；"
+        },
+        {
+          "reference": "中华人民共和国民法典 二百一十八 | minfa.pdf p.48",
+          "content": "第二百一十八条\n权利人、利害关系人可以申请查询、复制不动产登记资\n料，登记机构应当提供。"
+        },
+        {
+          "reference": "中华人民共和国民法典 六百六十九 | minfa.pdf p.132",
+          "content": "第六百六十九条\n订立借款合同，借款人应当按照贷款人的要求提供与借款\n有关的业务活动和财务状况的真实情况。"
+        }
+      ],
+      "verification": {
+        "passed": true,
+        "citation_count": 5,
+        "reason": "answer_and_citations_present"
+      },
+      "trace": [
+        {
+          "node": "intent_analysis",
+          "method": "embedding",
+          "domain": "civil"
+        },
+        {
+          "node": "task_planning",
+          "steps": [
+            "route_to_domain_tool",
+            "retrieve_legal_basis",
+            "generate_answer",
+            "verify_answer"
+          ]
+        },
+        {
+          "node": "tool_decision",
+          "tool": "search_civil_law"
+        },
+        {
+          "node": "tool_execution",
+          "tool": "search_civil_law",
+          "status": "success"
+        },
+        {
+          "node": "retrieval",
+          "documents": 5
+        },
+        {
+          "node": "generation",
+          "answer_length": 559
+        },
+        {
+          "node": "verification",
+          "passed": true,
+          "citation_count": 5,
+          "reason": "answer_and_citations_present"
+        }
+      ],
+      "retry_count": 0,
+      "error": null,
+      "latency_ms": 809.5
+    }
+  ]
+}

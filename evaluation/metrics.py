@@ -10,32 +10,51 @@ def accuracy(predictions: Sequence, references: Sequence) -> float:
     return sum(p == r for p, r in zip(predictions, references)) / len(references)
 
 
+def _normalize_ref(ref: str) -> str:
+    """引用比较只看"法律名+条款序号"，忽略 " | 文件名 p.页码" 这段索引实现
+    细节。之前 gold 是完全无关的英文标签（如 "labor_overtime_regulation"），
+    从没跟检索器实际产出的引用格式对齐过，导致 recall/mrr/citation_* 恒为0；
+    现在 gold 改用和检索结果同源的"法律名 条款号"格式后，如果还按完整字符
+    串（含文件名、页码）比较，未来只要 chunk 切分方式或分页变化，原本正确
+    的命中又会被误判为 miss。归一化到"法律名+条款号"更贴近"引用的法条是否
+    正确"这个业务本意。"""
+    return ref.split("|", 1)[0].strip()
+
+
+def _normalize_refs(refs: Sequence[str]) -> set[str]:
+    return {_normalize_ref(r) for r in refs if r}
+
+
 def recall_at_k(retrieved: Sequence[Sequence[str]], relevant: Sequence[Sequence[str]], k: int = 5) -> float:
     if not relevant: return 0.0
-    return sum(bool(set(gold) & set(got[:k])) for got, gold in zip(retrieved, relevant)) / len(relevant)
+    return sum(
+        bool(_normalize_refs(gold) & _normalize_refs(got[:k]))
+        for got, gold in zip(retrieved, relevant)
+    ) / len(relevant)
 
 
 def mrr(retrieved: Sequence[Sequence[str]], relevant: Sequence[Sequence[str]]) -> float:
     if not relevant: return 0.0
     vals=[]
     for got, gold in zip(retrieved, relevant):
-        rank=next((i+1 for i,x in enumerate(got) if x in set(gold)), None)
+        gold_norm = _normalize_refs(gold)
+        rank=next((i+1 for i,x in enumerate(got) if _normalize_ref(x) in gold_norm), None)
         vals.append(1/rank if rank else 0.0)
     return sum(vals)/len(vals)
 
 
 def citation_precision(predicted: Sequence[str], gold: Sequence[str]) -> float:
-    p,g=set(predicted),set(gold)
+    p,g=_normalize_refs(predicted),_normalize_refs(gold)
     return len(p & g)/len(p) if p else 0.0
 
 
 def citation_recall(predicted: Sequence[str], gold: Sequence[str]) -> float:
-    p,g=set(predicted),set(gold)
+    p,g=_normalize_refs(predicted),_normalize_refs(gold)
     return len(p & g)/len(g) if g else 0.0
 
 
 def citation_accuracy(predicted: Sequence[str], gold: Sequence[str]) -> float:
-    return 1.0 if set(predicted) == set(gold) else 0.0
+    return 1.0 if _normalize_refs(predicted) == _normalize_refs(gold) else 0.0
 
 
 def argument_accuracy(predicted: dict[str, Any], gold: dict[str, Any]) -> float:

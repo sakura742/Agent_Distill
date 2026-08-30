@@ -48,9 +48,16 @@
     "workflow_success_rate": 0.0
   },
   "error_reduction": {
-    "baseline_error_rate": 0.0,
-    "lora_error_rate": 0.0,
-    "relative_reduction": null,
+    "scope": [
+      "answer",
+      "answer_citation",
+      "workflow"
+    ],
+    "scope_note": "仅统计 workflow/answer/answer_citation：routing/retrieval/tool_calling 由规则路由与 RAG 检索产生，不经过被比较的模型，Raw/LoRA 在这三类上的结果恒定相同，不计入对比。",
+    "samples_used": 18,
+    "baseline_error_rate": 0.3333333333333333,
+    "lora_error_rate": 0.3333333333333333,
+    "relative_reduction": 0.0,
     "target_35_percent_met": false
   },
   "raw_errors": {

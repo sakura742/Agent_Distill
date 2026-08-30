@@ -6,7 +6,7 @@
     "citation_precision": 0.0,
     "citation_recall": 0.0,
     "citation_accuracy": 0.0,
-    "avg_latency_ms": 38134.863333333335,
+    "avg_latency_ms": 36947.79,
     "error_rate": 0.0
   },
   "predictions": [
@@ -108,7 +108,7 @@
       ],
       "retry_count": 0,
       "error": null,
-      "latency_ms": 55661.91
+      "latency_ms": 50538.51
     },
     {
       "id": "answer_citation-002",
@@ -208,7 +208,7 @@
       ],
       "retry_count": 0,
       "error": null,
-      "latency_ms": 34765.94
+      "latency_ms": 34471.62
     },
     {
       "id": "answer_citation-003",
@@ -308,7 +308,7 @@
       ],
       "retry_count": 0,
       "error": null,
-      "latency_ms": 34562.28
+      "latency_ms": 33958.63
     },
     {
       "id": "answer_citation-004",
@@ -408,7 +408,7 @@
       ],
       "retry_count": 0,
       "error": null,
-      "latency_ms": 34743.18
+      "latency_ms": 34401.0
     },
     {
       "id": "answer_citation-005",
@@ -508,7 +508,7 @@
       ],
       "retry_count": 0,
       "error": null,
-      "latency_ms": 34570.06
+      "latency_ms": 34438.41
     },
     {
       "id": "answer_citation-006",
@@ -608,7 +608,7 @@
       ],
       "retry_count": 0,
       "error": null,
-      "latency_ms": 34505.81
+      "latency_ms": 33878.57
     }
   ]
 }
