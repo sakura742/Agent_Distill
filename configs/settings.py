@@ -13,7 +13,7 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 try:
     from dotenv import load_dotenv
     load_dotenv(PROJECT_ROOT / ".env")
-except ImportError:  # pragma: no cover
+except ImportError:
     pass
 
 
@@ -47,15 +47,17 @@ class Settings:
     # Phase 5/6 experiment model: Qwen3.5-4B Raw vs Qwen3.5-4B LoRA.
     qwen35_model_path: str = field(default_factory=lambda: _env("AGENT_DISTILL_QWEN35_MODEL_PATH", r"D:\py\models"))
     qwen35_lora_output_dir: Path = field(default_factory=lambda: _env_path("AGENT_DISTILL_QWEN35_LORA_OUTPUT_DIR", PROJECT_ROOT / "qwen35_lora"))
+    qwen35_decision_lora_output_dir: Path = field(default_factory=lambda: _env_path("AGENT_DISTILL_QWEN35_DECISION_LORA_OUTPUT_DIR", PROJECT_ROOT / "qwen35_decision_lora"))
+    qwen35_answer_lora_output_dir: Path = field(default_factory=lambda: _env_path("AGENT_DISTILL_QWEN35_ANSWER_LORA_OUTPUT_DIR", PROJECT_ROOT / "qwen35_answer_lora"))
+    phase5_decision_data_path: Path = field(default_factory=lambda: _env_path("AGENT_DISTILL_PHASE5_DECISION_DATA_PATH", PROJECT_ROOT / "distill" / "data" / "phase5_decision.jsonl"))
+    phase5_answer_data_path: Path = field(default_factory=lambda: _env_path("AGENT_DISTILL_PHASE5_ANSWER_DATA_PATH", PROJECT_ROOT / "distill" / "data" / "phase5_answer.jsonl"))
 
     base_model_path: str = field(default_factory=lambda: _env("AGENT_DISTILL_BASE_MODEL_PATH", r"D:\py\Qwen2.5-1.5B"))
     embedding_model_name: str = field(default_factory=lambda: _env("AGENT_DISTILL_EMBEDDING_MODEL", "shibing624/text2vec-base-chinese"))
     reranker_model_name: Optional[str] = field(default_factory=lambda: _env("AGENT_DISTILL_RERANKER_MODEL"))
-
     deepseek_api_key: Optional[str] = field(default_factory=lambda: _env("DEEPSEEK_API_KEY"))
     deepseek_base_url: str = field(default_factory=lambda: _env("DEEPSEEK_BASE_URL", "https://api.deepseek.com"))
     deepseek_model: str = field(default_factory=lambda: _env("DEEPSEEK_MODEL", "deepseek-chat"))
-
     max_history_turns: int = field(default_factory=lambda: _env_int("AGENT_DISTILL_MAX_HISTORY_TURNS", 3))
     law_snippet_limit: int = field(default_factory=lambda: _env_int("AGENT_DISTILL_LAW_SNIPPET_LIMIT", 600))
     retrieval_top_k: int = field(default_factory=lambda: _env_int("AGENT_DISTILL_RETRIEVAL_TOP_K", 3))
