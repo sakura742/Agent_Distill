@@ -4,37 +4,50 @@
 
 ## 1. 当前结论
 
-最新真实 Retrieval 实验已经完成 Top-5/10/20 扩大 K 诊断。结果显示 Top-10→Top-20 的 Recall/MRR 不再提升，说明扩大候选数量不能解决两个顽固 Civil query 的问题；因此当前工作重点从“扩大 K”转向“候选召回质量/查询表达/重排”。
+最新真实实验表明，`GTE-large-zh` 是当前检索 baseline。Rewrite 在原实现中采用“替换原查询”的方式，会伤害 #005 买卖合同，同时帮助 #006 借款；因此不能把 Rewrite 直接作为默认查询。
 
-用户报告的最新汇总：
+用户报告的当前对比：
 
 ```text
-Recall@5  ≈ 0.571
-Recall@10 ≈ 0.714
-Recall@20 ≈ 0.714
-MRR@5     ≈ 0.298
-MRR@10    ≈ 0.313
-MRR@20    ≈ 0.313
+纯 GTE
+Precision@5 ≈ 0.171
+Recall@5    ≈ 0.786
+MRR         ≈ 0.452
+
+GTE + Rewrite（旧：替换查询）
+Precision@5 ≈ 0.143
+Recall@5    ≈ 0.643
+MRR         ≈ 0.381
 ```
 
-其中：
+逐样本：
 
-- #005 买卖合同逾期交货：gold 第577条到 Top-20 仍未出现；
-- #007 邻居漏水：gold 第1165/1184条到 Top-20 仍未出现；
-- #006 借款纠纷：Top-5 miss，但更大 K 可以找到，属于更接近 ranking 问题；
-- Router 最近独立评估约 86.7%，主要弱项是 Civil 漏报/边界问题。
+- #001 加班：Rewrite 不变；
+- #002 拖欠工资：Rewrite 不变；
+- #003 违法辞退：Rewrite 不变；
+- #004 社保：Rewrite 不变；
+- #005 买卖合同：纯 GTE 命中且排第 1，旧 Rewrite 造成 miss；
+- #006 借款：Rewrite 将正确法条提高到第 1；
+- #007 邻居漏水：所有组合仍 miss。
 
-因此不能继续把 #005/#007 解释成简单的“Top-K 不够”或“纯 rerank 就能解决”。
+因此最新策略是：
 
-## 2. 已完成
+```text
+GTE-large-zh = baseline
+Rewrite       = additive candidate expansion，不再替换原查询
+Reranker      = experimental only，不进入默认链路
+#007          = 仍是 recall/index hard case
+```
+
+## 2. 本轮已完成
 
 ### Router
 
 - `unknown`/abstention；
 - labor/civil hard rules；
-- neighbor/leakage/traffic/loan/lease 等 Civil 场景规则；
+- loan / debt / delivery / neighbor leakage 等 Civil 规则；
 - 条件 Graph 路由；
-- Router benchmark 基础入口。
+- 基础 Router benchmark 能力。
 
 ### Knowledge ingestion
 
@@ -42,16 +55,21 @@ MRR@20    ≈ 0.313
 - 跨页法条不因 page boundary 直接截断；
 - 相邻 `第X条` 独立切分；
 - normalized embeddings；
-- Chroma collection 显式 cosine metric。
+- Chroma 显式 cosine metric；
+- 索引记录 embedding model 与 normalization 元数据。
 
 ### Retrieval
 
+- GTE-large-zh baseline；
+- 独立 embedding/chroma A/B；
 - candidate pool；
 - `distance` / diagnostic `score` / `rerank_score`；
 - optional hybrid；
-- optional CrossEncoder rerank；
-- query rewrite 能力；
-- 新的 Retrieval benchmark v2。
+- optional CrossEncoder；
+- Civil query rewrite；
+- **本轮将 rewrite 从“替换 query”改成“原 query + 改写 query 双路召回后 union，按同一 chunk 的最大 embedding score 保留”**。
+
+这样可以避免 #005 这类原查询已经能准确召回的 case 因 rewrite 偏移而丢失，同时允许 #006 从改写查询获得额外候选。
 
 ### Citation / Verification
 
@@ -65,204 +83,152 @@ MRR@20    ≈ 0.313
 
 - Decision SFT 与 Answer SFT 拆分；
 - 旧 trajectory 不直接作为最终训练集；
-- failure trajectory 可以 quarantine，用于 error analysis。
+- failure trajectory quarantine；
+- trajectory v2 必须等 retrieval 达标后重新生成。
 
-## 3. 重要历史根因
+## 3. Retrieval 实验结论
 
-### 3.1 Query / document embedding contract 曾经不一致
+### Top-K
 
-历史代码使用过 `1 - distance / 2` 作为 score，并且 query/document embedding normalization 与 collection metric 不统一，造成 200+ distance 和约 0.004 的诊断 score。
-
-现在统一为 normalized embedding + cosine collection。**必须重新 ingest 才能真正生效。**
-
-### 3.2 `citations` 曾经全量复制 retrieval
-
-旧 trajectory 中 `citations == retrieved_documents`，导致噪声法条直接进入 supervision。
-
-### 3.3 verification 曾经只有存在性检查
-
-旧逻辑只要 answer/citations 存在就可能通过，无法识别：
-
-- answer 引用检索不到的法条；
-- citation 与问题无关；
-- non-legal 问题却出现法律 evidence。
-
-## 4. Top-K 诊断的意义
-
-Top-5/10/20 实验不是最终优化，而是定位。
-
-如果 gold：
+此前实验：
 
 ```text
-Top-5 miss
-Top-10 hit
-Top-20 hit
+Top-5  Recall ≈ 0.571 / MRR ≈ 0.298
+Top-10 Recall ≈ 0.714 / MRR ≈ 0.313
+Top-20 Recall ≈ 0.714 / MRR ≈ 0.313
 ```
 
-优先考虑 ranking/re-ranker。
+Top-10 → Top-20 无进一步收益，因此继续扩大 K 不是解决方案。
 
-如果：
+### Embedding A/B
+
+GTE-large-zh 明显优于旧 text2vec baseline，并解决 #005 买卖合同 case；BGE-M3 在当前 benchmark 没有更好表现。
+
+### Rewrite
+
+旧实现：
 
 ```text
-Top-20 still miss
+query -> rewrite(query) -> 单次 retrieval
 ```
 
-则问题更可能在：
+结果对整体有负贡献，且 #005 从 hit 变成 miss。
 
-- embedding 表达能力；
-- query formulation；
-- index/chunk representation；
-- gold 标注与实际法条语义不一致。
-
-当前 #005/#007 属于第二类，因此不能只上 reranker 就认为问题可以解决。
-
-## 5. 本轮新增方向
-
-### 5.1 Query rewrite
-
-新增 `knowledge/query_rewrite.py`，支持：
-
-- 逾期交货 → 合同迟延履行 / 违约责任；
-- 借款不还 → 借款期限 / 到期返还 / 债务人；
-- 邻居漏水 → 相邻关系 / 侵权责任 / 财产损害赔偿；
-- 押金/租房 → 租赁合同 / 押金返还；
-- 交通事故 → 侵权责任 / 人身及财产损害。
-
-这是实验能力，不应因为代码存在就默认宣称有效。
-
-### 5.2 Retrieval benchmark A/B
-
-benchmark 现在支持独立比较：
+因此新实现：
 
 ```text
-embedding-only
-embedding + hybrid
-embedding + rerank
-embedding + rewrite
+original query ─┐
+                ├─> candidate union -> best score per chunk -> ranking
+rewritten query ┘
 ```
 
-并记录：
+Rewrite 不再有权删除原查询已经找到的 candidate。
 
-- Precision@K
-- Recall@K
-- MRR
-- distance
-- score
-- rerank_score
+### Reranker
 
-## 6. 当前真正的 P0
-
-### P0-1：重新 ingest
-
-```powershell
-uv run python -m knowledge.ingest --reset
-```
-
-### P0-2：对同一 gold 集完成以下实验
-
-```powershell
-# baseline
-uv run python -m evaluation.retrieval_benchmark data/evaluation/retrieval_benchmark_v2.jsonl --top-k 5
-
-# rewrite
-uv run python -m evaluation.retrieval_benchmark data/evaluation/retrieval_benchmark_v2.jsonl --top-k 5 --rewrite
-
-# rerank
-uv run python -m evaluation.retrieval_benchmark data/evaluation/retrieval_benchmark_v2.jsonl --top-k 5 --rerank
-
-# rewrite + rerank
-uv run python -m evaluation.retrieval_benchmark data/evaluation/retrieval_benchmark_v2.jsonl --top-k 5 --rewrite --rerank
-```
-
-前提：本地必须配置一个真正可加载的 CrossEncoder，否则 `--rerank` 只能走 no-op fallback。
-
-### P0-3：比较 #005/#006/#007 的结果
-
-重点不是只看平均值，要看三个 case：
+真实实验表明当前 CrossEncoder reranker 在整体上显著伤害 GTE：
 
 ```text
-#005 买卖合同逾期交货
-#006 借款到期不还
-#007 邻居漏水
+GTE baseline       MRR ≈ 0.405, Recall ≈ 0.714
+GTE + reranker     MRR ≈ 0.179, Recall ≈ 0.429
 ```
 
-如果 rewrite 能救 #005/#007，说明主要是 query formulation；如果仍然 Top-20 miss，则进入 embedding/index A/B。
+因此 reranker 目前不是默认方案。只有后续在更强 candidate pool、领域化或加权融合后证明有效，才重新考虑进入正式链路。
 
-## 7. Embedding 模型 A/B 原则
+## 4. 当前 hard cases
 
-不要直接把项目永久切换到某个“听起来更强”的模型。
+### #005 买卖合同逾期交货
 
-应保持：
+GTE 已经可以命中 `第五百七十七条`，所以不能再让 rewrite 破坏这个 case。后续以 regression test 保护。
 
-- 同一 PDF；
-- 同一 chunker；
-- 同一 gold；
-- 同一 cosine metric；
-- 同一 Top-K；
+### #006 借款到期不还
 
-只替换 `embedding_model_name`，然后重建两个独立 collection，比较 Recall@5/10/20 和 MRR。
+Rewrite 有帮助，说明口语 query 到法律概念之间存在表达 gap。新的 additive fusion 应保持原始命中，同时利用 rewrite candidate。
 
-这样才能证明改善来自 embedding，而不是其它变量。
+### #007 邻居漏水
 
-## 8. Civil metadata/topic labels
+多个 embedding / rewrite / reranker 组合均未稳定召回 `第一千一百六十五条` / `第一千一百八十四条`。
 
-如果 embedding A/B 仍不能稳定召回 Civil gold，再增加 article topic/scenario metadata，例如：
+这说明当前主要矛盾仍是 recall/index representation，而不是简单 ranking。
+
+下一步优先：
 
 ```text
-侵权-一般
-侵权-特殊
-相邻关系
-财产损害
-合同-买卖
-合同-借款
-合同-租赁
-违约责任
+法律主题/场景 metadata
++
+语义增强的法条索引文本
++
+必要时人工构造高质量 Civil hard-case query variants
 ```
 
-但标签必须来自可验证的规则/人工标注，不能让模型自我生成后直接作为 gold。
+不能写死 `#007 -> 1165/1184` 这种 benchmark-specific 规则到生产 retriever。
 
-## 9. 尚未完成
+## 5. Embedding/index contract
 
-1. Retrieval threshold 尚未完成 benchmark 校准；目前不应把固定 `0.45` 当作真实相关概率。
-2. Reranker 尚未完成真实本地模型 A/B。
-3. Query rewrite 尚未完成 benchmark A/B。
-4. 更强 embedding 模型尚未完成严格 A/B。
-5. Router benchmark 需要继续扩展边界和 non-legal 样本。
-6. Citation semantic entailment 尚未完成。
-7. 原 PDF 全量完整性审计尚未完成。
-8. trajectory v2 尚未经过 20~50 条人工抽样验收。
-9. 新 Decision/Answer LoRA 尚未训练。
+查询模型与 Chroma 必须完全一致：
+
+- 同一 `embedding_model`；
+- 同一 normalization；
+- 同一 `hnsw:space=cosine`；
+- 同一 collection；
+- 不同 embedding 使用不同 `chroma_db_dir`。
+
+当前 Retriever 会提前检查模型身份与维度，避免 Chroma 在 query 时才抛 768 vs 1024 之类的底层错误。
+
+## 6. Citation / verification 剩余问题
+
+当前 grounding 基础校验已经存在，但还没有完成真正的 semantic entailment：
+
+```text
+citation 是否与回答中的具体主张一致？
+```
+
+不能因为 `第X条` 出现在 answer 和 evidence 两边，就直接认为法律解释一定正确。
+
+## 7. 尚未完成
+
+1. GTE + additive rewrite 的完整 benchmark 尚未由用户重新跑出最终数字；
+2. #007 的 topic/scene index enhancement 尚未完成最终 A/B；
+3. Router benchmark 仍需扩充边界样本；
+4. Retrieval threshold 尚未校准；
+5. Reranker domain-specific / score fusion 尚未继续验证；
+6. Citation semantic entailment 尚未完成；
+7. PDF 全量完整性审计尚未完成；
+8. trajectory v2 尚未经过 20~50 条人工抽样验收；
+9. 新 Decision/Answer LoRA 尚未训练；
 10. Raw vs LoRA 新一轮 benchmark 尚未开始。
 
-## 10. 明确禁止
+## 8. 明确禁止
 
 - 不要把旧 `agent_trajectory.jsonl` 直接用于最终 LoRA；
 - 不要因为 Top-K 增大而声称 retrieval 已修复；
 - 不要把 diagnostic score 当概率；
 - 不要在没有 A/B 的情况下宣称 reranker/hybrid/rewrite 有效；
-- 不要为了提高 benchmark 分数针对 #005/#007 写硬编码特殊规则；
-- 不要用 LLM 自动“补全文法条”并回写知识库。
+- 不要针对 #007 写硬编码特殊规则；
+- 不要用 LLM 自动补全文法条并回写知识库；
+- 不要让 rewrite 直接替换用户原 query；必须保持 original retrieval candidate。
 
-## 11. 下一 AI 的最短路径
+## 9. 下一 AI 最短路径
 
 ```text
 1. pytest -q
-2. ingest --reset
-3. baseline / rewrite / rerank / rewrite+rERANK A/B
-4. 分析 #005/#006/#007
-5. 如果 #005/#007 仍 Top-20 miss → embedding model A/B
-6. 再考虑 topic metadata
+2. 重建 GTE index（如 index 未包含最新 topic enrichment）
+3. baseline GTE
+4. GTE + additive rewrite
+5. 比较 #005/#006/#007
+6. 如果 #007 仍 Top-20 miss -> topic metadata / index enhancement
 7. Retrieval 达标后重新生成 trajectory v2
-8. 人工审核 20~50 条
-9. prepare_phase5_data.py
-10. Decision/Answer SFT
-11. Raw vs LoRA
+8. filter/quarantine 失败样本
+9. 人工审核 20~50 条
+10. prepare_phase5_data
+11. Decision/Answer SFT
+12. Raw vs LoRA
 ```
 
-## 12. 分支与数据
+## 10. 分支与数据
 
 工作分支：`fix/phase6`。
 
 `master` 保持稳定；LoRA 大文件不提交。历史 Raw/LoRA JSON、benchmark、trajectory seed 等数据继续保留。
 
-本报告持续更新；下一次更新必须加入真实 A/B 数字，不要只写“代码支持”。
+本报告必须持续更新真实实验数字；不要把“代码支持”写成“实验已经证明”。
