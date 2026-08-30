@@ -12,6 +12,7 @@ from pathlib import Path
 from langchain_core.documents import Document
 
 from knowledge.legal_schema import LegalChunk
+from knowledge.topic_enrichment import enriched_retrieval_text
 
 _ARTICLE_RE = re.compile(r"(?m)(?=^\s*第\s*[0-9一二三四五六七八九十百千万亿零〇两]+\s*条\b)")
 _CHAPTER_RE = re.compile(r"(?m)^\s*(第\s*[0-9一二三四五六七八九十百千万亿零〇两]+\s*[章节].*)$")
@@ -47,12 +48,7 @@ def split_legal_text(
     page: int | None = None,
     max_chars: int = 1200,
 ) -> list[LegalChunk]:
-    """Split a complete corpus text by article boundaries.
-
-    ``page`` is kept for backwards compatibility and is treated as the start
-    page when the text represents one page. For whole-PDF ingestion use
-    ``split_legal_text_with_pages`` below so cross-page articles remain intact.
-    """
+    """Split a complete corpus text by article boundaries."""
     text = _clean(text)
     if not text:
         return []
@@ -92,12 +88,7 @@ def split_legal_text_with_pages(
     source: str,
     max_chars: int = 1200,
 ) -> list[LegalChunk]:
-    """Split an entire PDF at article boundaries while preserving start page.
-
-    Page boundaries are converted to offsets in the combined corpus text.
-    Therefore an article that starts on page N and ends on page N+1 remains a
-    single logical article (unless it exceeds ``max_chars``).
-    """
+    """Split an entire PDF at article boundaries while preserving start page."""
     cleaned_pages = [_clean(page) for page in pages]
     combined = "\n\n".join(page for page in cleaned_pages if page)
     if not combined:
@@ -145,9 +136,25 @@ def split_legal_text_with_pages(
 
 def documents_from_pdf_page(text: str, *, domain: str, law_name: str, source: str, page: int) -> list[Document]:
     chunks = split_legal_text(text, domain=domain, law_name=law_name, source=source, page=page)
-    return [Document(page_content=c.text, metadata=c.to_metadata()) for c in chunks]
+    return [
+        Document(
+            page_content=enriched_retrieval_text(
+                law_name=c.law_name, article=c.article, chapter=c.chapter, text=c.text
+            ),
+            metadata=c.to_metadata(),
+        )
+        for c in chunks
+    ]
 
 
 def documents_from_pdf_pages(pages: list[str], *, domain: str, law_name: str, source: str) -> list[Document]:
     chunks = split_legal_text_with_pages(pages, domain=domain, law_name=law_name, source=source)
-    return [Document(page_content=c.text, metadata=c.to_metadata()) for c in chunks]
+    return [
+        Document(
+            page_content=enriched_retrieval_text(
+                law_name=c.law_name, article=c.article, chapter=c.chapter, text=c.text
+            ),
+            metadata=c.to_metadata(),
+        )
+        for c in chunks
+    ]
