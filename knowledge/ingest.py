@@ -20,6 +20,16 @@ from knowledge.legal_chunker import documents_from_pdf_pages
 logger = get_logger(__name__)
 
 
+def _build_embeddings() -> HuggingFaceEmbeddings:
+    # Normalize document/query vectors so cosine distance has a stable meaning
+    # and is bounded in the expected range. The same configuration is used by
+    # knowledge.retriever at query time.
+    return HuggingFaceEmbeddings(
+        model_name=settings.embedding_model_name,
+        encode_kwargs={"normalize_embeddings": True},
+    )
+
+
 def build_collection(corpus, *, reset: bool = False) -> int:
     file_path = settings.data_dir / corpus.filename
     if not file_path.exists():
@@ -40,7 +50,7 @@ def build_collection(corpus, *, reset: bool = False) -> int:
         logger.warning("文档没有产生有效条款: %s", file_path)
         return 0
 
-    embeddings = HuggingFaceEmbeddings(model_name=settings.embedding_model_name)
+    embeddings = _build_embeddings()
     os.makedirs(settings.chroma_db_dir, exist_ok=True)
 
     if reset:
@@ -56,9 +66,10 @@ def build_collection(corpus, *, reset: bool = False) -> int:
         documents=docs,
         embedding=embeddings,
         collection_name=corpus.collection,
+        collection_metadata={"hnsw:space": "cosine"},
         persist_directory=str(settings.chroma_db_dir),
     )
-    logger.info("完成 %s: %d 个 chunks", corpus.collection, len(docs))
+    logger.info("完成 %s: %d 个 chunks (cosine, normalized embeddings)", corpus.collection, len(docs))
     return len(docs)
 
 
