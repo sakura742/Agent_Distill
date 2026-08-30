@@ -65,7 +65,7 @@ def tool_execution(state: AgentState, executor=None) -> AgentState:
 
 def _split_articles(content: str) -> list[str]:
     """Split a retriever chunk containing adjacent Chinese law articles."""
-    matches = list(re.finditer(r"(?m)(?=^第[一二三四五六七八九十百千万亿零〇两]+条\\s*$)", content))
+    matches = list(re.finditer(r"(?m)(?=^第[一二三四五六七八九十百千万亿零〇两]+条\s*$)", content))
     if not matches:
         return [content.strip()] if content.strip() else []
     chunks: list[str] = []
@@ -89,6 +89,11 @@ def _parse_retrieval(tool_result: str) -> list[dict[str, Any]]:
             continue
         header, content = block.split("]\n", 1)
         reference = header[1:].strip()
+        score = None
+        score_match = re.search(r"\s*\|\s*score=([0-9]*\.?[0-9]+)\s*$", reference)
+        if score_match:
+            score = float(score_match.group(1))
+            reference = reference[:score_match.start()].rstrip()
         for article in _split_articles(content):
             number = _article_number(article)
             ref = reference
@@ -97,14 +102,17 @@ def _parse_retrieval(tool_result: str) -> list[dict[str, Any]]:
                 ref = f"{number} | {suffix}"
             elif number:
                 ref = number
-            docs.append({"reference": ref, "content": article})
+            doc = {"reference": ref, "content": article}
+            if score is not None:
+                doc["score"] = score
+            docs.append(doc)
     return docs
 
 
 def retrieval(state: AgentState) -> AgentState:
     docs = _parse_retrieval(state.get("tool_result", ""))
     return {"retrieved_documents": docs, "citations": [],
-            "trace": _trace(state, "retrieval", documents=len(docs))}
+            "trace": _trace(state, "retrieval", documents=len(docs), scores=[d.get("score") for d in docs if "score" in d])}
 
 
 def _select_citations(answer: str, docs: list[dict[str, Any]]) -> list[dict[str, Any]]:
@@ -147,8 +155,10 @@ def verification(state: AgentState) -> AgentState:
         cited_refs = {d.get("reference") for d in citations}
         retrieved_refs = {d.get("reference") for d in docs}
         valid_citations = cited_refs.issubset(retrieved_refs)
-        ok = bool(answer.strip()) and bool(citations) and valid_citations
-        reason = "answer_and_used_citations_valid" if ok else "missing_or_invalid_used_citations"
+        citation_numbers = {_article_number(str(d.get("content", ""))) for d in citations}
+        answer_mentions_citation = any(n and n in answer for n in citation_numbers)
+        ok = bool(answer.strip()) and bool(citations) and valid_citations and answer_mentions_citation
+        reason = "answer_and_used_citations_valid" if ok else "missing_invalid_or_unsubstantiated_citations"
     v = {"passed": ok, "citation_count": len(citations), "retrieved_count": len(docs), "reason": reason}
     return {"verification": v, "trace": _trace(state, "verification", **v)}
 
