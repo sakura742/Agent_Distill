@@ -1,4 +1,8 @@
-"""Audit Phase 5 SFT JSONL before training."""
+"""Audit Phase 5 SFT JSONL before training.
+
+Supports both validated trajectory rows and the final chat-message SFT format
+produced by ``prepare_phase5_data.py``.
+"""
 from __future__ import annotations
 
 import argparse
@@ -10,7 +14,7 @@ from typing import Any
 def _load(path: Path) -> list[dict[str, Any]]:
     if not path.exists():
         raise FileNotFoundError(path)
-    rows = []
+    rows: list[dict[str, Any]] = []
     with path.open(encoding="utf-8") as f:
         for line in f:
             if line.strip():
@@ -18,22 +22,46 @@ def _load(path: Path) -> list[dict[str, Any]]:
     return rows
 
 
+def _message_value(row: dict[str, Any], role: str) -> str:
+    for message in row.get("messages", []):
+        if message.get("role") == role:
+            return str(message.get("content") or "").strip()
+    return ""
+
+
+def _question_answer(row: dict[str, Any]) -> tuple[str, str, str | None]:
+    """Return question, answer, and inferred domain for trajectory or chat rows."""
+    if isinstance(row.get("messages"), list):
+        question = _message_value(row, "user")
+        answer = _message_value(row, "assistant")
+        return question, answer, None
+    question = str(row.get("question") or "").strip()
+    answer = str(row.get("answer") or "").strip()
+    return question, answer, row.get("domain")
+
+
 def audit(path: Path) -> dict[str, Any]:
     rows = _load(path)
-    questions = [str(r.get("question") or "").strip() for r in rows]
-    answers = [str(r.get("answer") or "").strip() for r in rows]
-    domains = {}
-    duplicate_count = len(questions) - len(set(q for q in questions if q))
+    questions: list[str] = []
+    answers: list[str] = []
+    domains: dict[str, int] = {}
     for row in rows:
-        domain = row.get("domain") or "missing"
-        domains[domain] = domains.get(domain, 0) + 1
+        question, answer, domain = _question_answer(row)
+        questions.append(question)
+        answers.append(answer)
+        if domain is not None:
+            key = str(domain or "missing")
+            domains[key] = domains.get(key, 0) + 1
+
+    non_empty_questions = [q for q in questions if q]
     return {
         "path": str(path),
         "rows": len(rows),
         "empty_question": sum(not q for q in questions),
         "empty_answer": sum(not a for a in answers),
-        "duplicate_questions": duplicate_count,
+        "duplicate_questions": len(non_empty_questions) - len(set(non_empty_questions)),
         "domains": domains,
+        "format": "chat_messages" if any(isinstance(r.get("messages"), list) for r in rows) else "trajectory",
     }
 
 
