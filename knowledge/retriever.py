@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""法域隔离的 RAG Retriever，提供语义检索、关键词混排和可选 CrossEncoder。"""
+"""法域隔离的 RAG Retriever，支持可配置 embedding、hybrid 和 CrossEncoder。"""
 from __future__ import annotations
 
 import re
@@ -25,10 +25,10 @@ class RetrievedChunk:
     rerank_score: float | None = None
 
 
-@lru_cache(maxsize=1)
-def _get_embeddings() -> HuggingFaceEmbeddings:
+@lru_cache(maxsize=8)
+def _get_embeddings(model_name: str) -> HuggingFaceEmbeddings:
     return HuggingFaceEmbeddings(
-        model_name=settings.embedding_model_name,
+        model_name=model_name,
         encode_kwargs={"normalize_embeddings": True},
     )
 
@@ -57,15 +57,23 @@ def _lexical_overlap(query: str, content: str) -> float:
 
 
 class LegalRetriever:
-    def __init__(self, domain: str):
+    def __init__(
+        self,
+        domain: str,
+        *,
+        embedding_model_name: str | None = None,
+        chroma_db_dir: str | None = None,
+    ):
         corpus = corpus_by_domain(domain)
         self.domain, self.collection = corpus.domain, corpus.collection
-        self.embeddings = _get_embeddings()
+        self.embedding_model_name = embedding_model_name or settings.embedding_model_name
+        self.chroma_db_dir = chroma_db_dir or str(settings.chroma_db_dir)
+        self.embeddings = _get_embeddings(self.embedding_model_name)
         try:
             self.vectorstore = Chroma(
                 collection_name=self.collection,
                 embedding_function=self.embeddings,
-                persist_directory=str(settings.chroma_db_dir),
+                persist_directory=self.chroma_db_dir,
             )
             if self.vectorstore._collection.count() == 0:
                 raise KnowledgeBaseError(f"法律知识库 collection '{self.collection}' 为空")
@@ -153,5 +161,10 @@ class LegalRetriever:
             return results
 
 
-def get_retriever(domain: str) -> LegalRetriever:
-    return LegalRetriever(domain)
+def get_retriever(
+    domain: str,
+    *,
+    embedding_model_name: str | None = None,
+    chroma_db_dir: str | None = None,
+) -> LegalRetriever:
+    return LegalRetriever(domain, embedding_model_name=embedding_model_name, chroma_db_dir=chroma_db_dir)
