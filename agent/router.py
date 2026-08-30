@@ -28,7 +28,8 @@ _RULES = {
         "不签劳动合同", "续签", "加班费", "培训费", "服务期", "竞业", "年终奖",
     ),
     "civil": (
-        "民法", "侵权", "借款", "合同", "违约", "买卖", "租赁", "赔偿",
+        "民法", "侵权", "借款", "借钱", "借条", "民间借贷", "债务人", "欠款",
+        "合同", "违约", "买卖", "交货", "逾期交货", "租赁", "押金", "赔偿",
         "人格权", "婚姻", "邻居", "邻里", "楼上", "楼下", "漏水", "天花板",
         "房屋", "财产损害", "相邻关系", "宠物", "交通事故", "人身损害",
     ),
@@ -36,7 +37,7 @@ _RULES = {
 
 _DOMAIN_DESCRIPTIONS = {
     "labor": "劳动关系 工资 加班 辞退 劳动合同 社保 工伤 劳动仲裁 降薪 裁员 经济补偿 培训费 竞业",
-    "civil": "民事法律关系 合同 侵权 借款 买卖 租赁 赔偿 人格权 婚姻 邻里漏水 房屋 财产损害 相邻关系 人身损害",
+    "civil": "民事法律关系 合同 侵权 借款 借钱 借条 民间借贷 债务人 欠款 买卖 逾期交货 租赁 押金 赔偿 人格权 婚姻 邻里漏水 房屋 财产损害 相邻关系 人身损害",
 }
 
 
@@ -55,9 +56,6 @@ class HybridRouter:
         best_score = ranked[0][1]
         second_score = ranked[1][1]
 
-        # A rule hit is decisive only when one domain clearly wins. The old
-        # implementation forced a domain whenever any rule matched, and also
-        # broke ties in favour of labor because labor appeared first.
         if best_score > 0 and best_score > second_score:
             confidence = best_score / max(best_score + second_score, 1)
             if confidence >= RULE_MIN_CONFIDENCE:
@@ -78,8 +76,6 @@ class HybridRouter:
                 )
             return self._unknown_result(ranked_semantic, "embedding_abstain")
 
-        # If rules conflict and embeddings are unavailable, do not make up a
-        # domain. A false-positive retrieval is more damaging than abstention.
         return self._unknown_result(
             ranked if best_score > 0 else [],
             "rule_abstain" if best_score > 0 else "fallback",
