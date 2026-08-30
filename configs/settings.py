@@ -57,8 +57,8 @@ class Settings:
     phase5_answer_data_path: Path = field(default_factory=lambda: _env_path("AGENT_DISTILL_PHASE5_ANSWER_DATA_PATH", PROJECT_ROOT / "distill" / "data" / "phase5_answer.jsonl"))
 
     base_model_path: str = field(default_factory=lambda: _env("AGENT_DISTILL_BASE_MODEL_PATH", r"D:\py\Qwen2.5-1.5B"))
-    # Keep historical defaults for compatibility. Phase 6 experiments explicitly
-    # select GTE-large-zh and its dedicated Chroma index.
+    # Keep historical defaults for backwards compatibility. Phase 6 experiments
+    # explicitly select GTE-large-zh and its dedicated Chroma index.
     embedding_model_name: str = field(default_factory=lambda: _env("AGENT_DISTILL_EMBEDDING_MODEL", "shibing624/text2vec-base-chinese"))
     reranker_model_name: Optional[str] = field(default_factory=lambda: _env("AGENT_DISTILL_RERANKER_MODEL"))
     retrieval_min_score: Optional[float] = field(default_factory=lambda: (_env_float("AGENT_DISTILL_RETRIEVAL_MIN_SCORE", 0.45) if os.environ.get("AGENT_DISTILL_RETRIEVAL_MIN_SCORE") else None))
